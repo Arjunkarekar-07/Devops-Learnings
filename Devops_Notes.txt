@@ -1,0 +1,1950 @@
+Github link -> https://github.com/imnowdevops/ddc-material, https://github.com/hkhcoder/vprofile-project
+
+AWS CRED
+Root use - arjunkarekar2000@gmail.com / Arjunzozkarekar@1002
+IAM user - account id - 899127667488 / alias - arjundevopss / user - itadmin / pass - Arjunpop@12
+https://arjundevopss.signin.aws.amazon.com/console
+
+docker pull images -> to pull images
+docker run -it container_name/ID
+
+========== Vagrant ============================
+Search Vagrant cloud for the details 
+VAGRANT FOR VM's ( automcatic installation of OS in Vritual box)
+vargrant has lot of VM's already created.
+
+Benefits - 
+1. No OS Installation
+2. Free box available on vagrant cloud 
+
+Vagrantfile
+1. Manage all vm setting in a file 
+2. VM Challenges through Vagranfile
+3. provisioning
+
+========Simple Commands================
+
+1. vagrant0-stram-9 -> A vagrant file will be created in the present dir = /c/vagrant-vms
+2. vagrant up -> to start the VM
+3. vagrant ssh -> to go the current vm, in the dir ex: cd /c/vagrant-vms/ ; ls  Vagrantfile centos/ ubuntu/
+4. vagrant halt -> to stop the VM
+5. vagrant destroy -> to delete the VM
+6. vagrant reload -> to relod the VM to set the changes in the Vagrant file.
+7. vagarnt box list -> to list all the box 
+8. vagrant gloabl-status -> 
+9. vagrant box list -> to list all the boxes in the local 
+
+id       name    provider   state    directory
+-------------------------------------------------------------------------
+1d4af61  default virtualbox poweroff C:/vargrant-vms
+d053552  default virtualbox poweroff C:/vargrant-vms/ubuntu
+
+The above shows information about all known Vagrant environments
+on this machine. This data is cached and may not be completely
+up-to-date (use "vagrant global-status --prune" to prune invalid
+entries). To interact with any of the machines, you can go to that
+directory and run Vagrant, or you can use the ID directly with
+Vagrant commands from any directory. For example:
+"vagrant destroy 1a2b3c4d"
+
+
+
+=====================Networking========================================
+OSI Model
+                         TCP IP protocol 
+7. Appication ->        Telent,FTP,DHCP,etc
+6. Presentation         
+5. Session
+4. Transport             TCP , UDP 	
+3. Network               ICMP, ARP, RARP, UDP(Network)
+2. Data Link
+1. Physical
+
+private IP ranges
+10.0.0.0 - 10.255.255.255       - Class A
+172.16.0.0 - 172.16.255.255  	 - Class B
+192.169.0.0 - 192.169.255.255 	 - Class C 
+
+
+commands - ifonfig, ping, tracert -> with the hops, netstat -> antp all the open ports, ss -tunlp, nmap localhost, dig -> DNS resoltion, route -> gatways, arp -> mac mapping, mtr www.goole.com -> live view packet loss, telnet 123.323.23.3 3303
+
+==================== Nginx ================================================
+
+How to use Nginx as a Load Balancer?
+Nginx is a light weight reverse proxy that stands between whole internet and your server.
+You can use nginx for security(blocking attacks, secure http, etc.), optimization(CDN, Caching, etc.), logging, load balancing and etc.
+
+In today's post, I want to show you, how you can implement load balancing when you have multiple servers handling large amount of requests.
+
+1. In your nginx configuration, define your backend servers which you want to redirect requests to.
+2. Define algorithm which you want your load balancer to use.
+3. reload your nginx service and it is done.
+
+There are number of built in algorithms you can use to evenly distribute traffic across your backend services.
+1. Round Robin (default)
+Each request is passed to the next server in line.
+Simple, fair, good when servers are similar in power.
+2. Least Connections
+Requests go to the server with the fewest active connections.
+Useful when some requests take longer than others.
+3. IP Hash
+The client’s IP address determines which server handles the request.
+Sticky sessions (same client → same server).
+4. Weighted Algorithms
+You can combine weights with Round Robin, Least Connections, Random.
+Useful when servers have different power.
+5. Random (Nginx 1.5.12+)
+Randomly chooses a server.
+Optionally can pick from N random servers and choose the least loaded.
+
+# ========================== RHEL/CentOS Commands ==========================
+
+# Step 1: Remove existing TCP rule
+sudo firewall-cmd --permanent --remove-port=8472/tcp
+sudo firewall-cmd --reload
+sudo firewall-cmd --list-ports   # Verify removal
+
+# Step 2: Add new UDP rule
+sudo firewall-cmd --permanent --add-port=8472/udp
+sudo firewall-cmd --reload
+sudo firewall-cmd --list-ports   # Verify addition
+
+# Step 3: Check firewall rules
+sudo firewall-cmd --info-zone=public
+
+# Step 4: Update SELinux (if enabled)
+# -----------------------------------------
+# Why update SELinux?
+# SELinux (Security-Enhanced Linux) enforces security policies 
+# that restrict which processes can bind to which ports. 
+# Even if the firewall allows the UDP traffic, SELinux might block it.
+# These commands remove the old TCP rule and allow the new UDP rule.
+# -----------------------------------------
+sudo semanage port -d -p tcp 8472  # Remove old TCP rule
+sudo semanage port -a -t snmp_port_t -p udp 8472  # Add new UDP rule
+sudo semanage port -l | grep 8472  # Verify SELinux changes
+
+# Step 5: Check if the port is listening
+ss -uln | grep 8472
+
+# Step 6: Manual testing (UDP)
+nc -ul 8472   # Listen on UDP
+nc -u <server-ip> 8472  # Test from another machine
+
+# ========================== Ubuntu Commands ==========================
+
+# Step 1: Remove existing TCP rule
+sudo ufw delete allow 8472/tcp
+sudo ufw status  # Verify removal
+
+# Step 2: Add new UDP rule
+sudo ufw allow 8472/udp
+sudo ufw reload
+sudo ufw status  # Verify addition
+
+# Step 3: Check listening services
+ss -uln | grep 8472
+
+# Step 4: Update SELinux (if installed)
+# -----------------------------------------
+# Why update SELinux?
+# SELinux enforces strict access control policies, 
+# preventing unauthorized access to ports.
+# If SELinux is enabled, it may block the new UDP configuration.
+# -----------------------------------------
+sudo semanage port -d -p tcp 8472  # Remove old TCP rule
+sudo semanage port -a -t snmp_port_t -p udp 8472  # Add new UDP rule
+sudo semanage port -l | grep 8472  # Verify SELinux changes
+
+# Step 5: Manual testing (UDP)
+nc -ul 8472   # Listen on UDP
+nc -u <server-ip> 8472  # Test from another machine
+
+# ========================== Alternative: iptables (If firewall service is not used) ==========================
+
+# Remove existing TCP rule
+sudo iptables -D INPUT -p tcp --dport 8472 -j ACCEPT
+
+# Add UDP rule
+sudo iptables -A INPUT -p udp --dport 8472 -j ACCEPT
+sudo iptables -L -n | grep 8472  # Verify
+
+# Save iptables rules (Persistent across reboots)
+sudo netfilter-persistent save  # For Ubuntu
+sudo service iptables save      # For CentOS/RHEL 6
+
+====================== AWS =======================================
+
+EC2
+1. provides web services API for provisioning, manging, and deprovisioning virtual server inside amazon cloud 
+2. Ease in scaling Up/Down
+3. Pay only for what we use 
+4. can be integrated into several other service like rds,lamba 		
+
+components required to create an ec2 instance - 
+
+1. AMI - amazon machine image, have the info to launch and instance, which is a virtual server in the cloud 
+2. instance type - when we launch an instance, the instance type that you specify determines the hardware of the host computer used for your instance
+3. Amazon Elastic Block store - provides with flexible, cost effective and easy to use data storage options for your instances 
+4. Tag - Tag is simple label consisting of a customer defined key and optional value that can make it easier to manage, search for and filter resources 
+5. A security group acts as a virtue firewall that controls the traffic for one or more instances 
+6. Amazon EC2 uses public key cryptography to encrypt and decrypt login information
+
+===============Frist ec2 Instance======================
+ssh -i "web-key.pem" ec2-user@ec2-34-235-139-230.compute-1.amazonaws.com
+1. Requirement gathering 
+2. Key pairs 
+3. Security Group 
+4. Instance Launch 
+
+1. os -> size(Ram,CPU,Core etc)-> storage size -> project -> services ex:ssh, MySQL -> Environemnt(Ex:Dev,Prepod,prod,QA) -> login user 
+
+
+Security Groups 
+1. A security group acts as a virtual firewall that controls the traffic for one ore more instances
+2. we can add rules to each security group that allow traffic to or from its associated instances
+3. Security groups are stateful 
+
+Two things come into picture while setting up security rules 
+1.Inbound Rules -> Traffic coming from outside on the instance 
+2.Outbound Rules -> Traffic going from instance to outside
+
+Note: when stopping and starting an instance its private IP remain same but the public IP changes when we start , if we want to use elastic Ip's (Under Network and security) -> create on elastic Ip Man 5 -> then under actions associate with the instance which you want
+
+After creating an EC2 instance on AWS, you can find the username in several places, depending on the operating system of the instance:
+
+For Amazon Linux, CentOS, and RHEL Instances
+The default username is usually ec2-user.
+
+For Ubuntu Instances
+The default username is usually ubuntu.
+
+For Debian Instances
+The default username is usually admin or root.
+
+For SUSE Instances
+The default username is usually ec2-user or root.
+
+For Windows Instances
+You typically use the Administrator username. To retrieve the initial password, you need to decrypt it using your private key file provided during instance creation.
+
+=================AWS CLI================================
+1. install -> choco install awscli -> powershell (admin)
+2. Create IAM User -> click on the user -> security cred ->  create access key -> command line interface (get the access key (must be Highly secured)) -> open gibash -> aws config -> 
+$ aws configure
+AWS Access Key ID [None]: AKIA5CWBPNMQKCEE4NKG
+AWS Secret Access Key [None]: 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
+Default region name [None]: us-wast-1
+Default output format [None]: json
+======
+TO Confirm cred
+
+$ cat ~/.aws/config
+$ cat ~/.aws/credentials
+$ aws sts get-caller-identity
+	{
+    	  "UserId": "AIDA5CWBPNMQJRVJYJUBF",
+    	  "Account": "899127667488",
+    	  "Arn": "arn:aws:iam::899127667488:user/awscli"
+	}
+$ aws ec2 describe-instances
+
+Refer AWS Command Line Interface Part 1.pdf for Further Details in the Devops/
+https://awscli.amazonaws.com/v2/documentation/api/latest/index.html
+https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
+======ChatGPT Commands===================
+
+# AWS CLI Commands Cheat Sheet
+
+# Configure AWS CLI
+aws configure
+
+# S3 Commands
+aws s3 ls
+aws s3 cp <source> <destination>
+
+# EC2 Commands
+aws ec2 describe-instances
+aws ec2 start-instances --instance-ids <instance_id>
+aws ec2 stop-instances --instance-ids <instance_id>
+aws ec2 create-key-pair --key-name <key_name>
+
+# Lambda Commands
+aws lambda list-functions
+aws lambda invoke --function-name <function_name> --payload <payload_file> <output_file>
+
+# RDS Commands
+aws rds describe-db-instances
+
+# CloudFormation Commands
+aws cloudformation deploy --template-file <template_file> --stack-name <stack_name>
+Many more --
+
+================Elastic block storage=================================================
+To add more volumes to the existing instances and for high availability. 
+1. Block based storage 
+2. Runs ec2 os , store data db, file data etc
+3. placed in specific AZ. Automatically replicated within the AZ to protect from failure
+4. snapshot to take backup of entire volume
+
+Types of EBS 
+1. Gerneral purpose (SSD) -> Most of the Work loads
+2. Provisioned IOPS -> Large Database
+3. Throughput optimized HD -> Big data and Data warehouses 
+4. Cold HOD -> File Servers
+5. Magnetic -> Backup and Archives
+
+
+-------Creating a partition and attaching a project directory to it--------------
+Steps 
+1. Go to AWS console and assign a new partition let say 5gb and attach it to the instance id.
+2. fdisk -l ->  list all disks and partitions of the disks
+3. df -h -> to see mounted dir 
+4. Creating a partition 
+    fdisk /dev/xvdf (The disk which you want to create partition)
+    m for help -> this will show list of actions which can be performed
+    n for creating a new partition
+         partition number(1-4):
+	 first sector: 
+         last sector: default it will allocate or enter +3G
+    p -> will partition table 
+    w -> write table to disk and exit 
+5. fdisk -l -> a new partition will be created /dev/xvdf1
+6. Formatting (mkfs) -> mkfs.ext4 /dev/xvdf1
+7. mount /dir 
+8. df -h -> you will see the dir will be mounted to the partition 
+9. umount for reverse 
+10. Note: this is a temporary mount after you reboot this will be shown 
+11. Permanent mount -> vi /etc/fstab
+    columns -> partition_path  mount_dir 	     format_type   default(No options)     0 0(dump & fscp Code) 
+     	       /dev/xvdf1     /var/www/html/images     ext4   	  0 0  
+  		:wq!
+12. mount -a -> if any error In the file it will show 
+====================================================================================
+
+The lsof command in Linux/Unix stands for List Open Files. It is a powerful tool used to identify the files and processes that are currently open on the system.
+lsof /var/www/html/image
+
+To disable selinux -> vi /etc/selinux/config (if you deploy a project and you don't see the images)
+			SELENIX=disabled
+
+===================Snaphost Backup & Restore=====================================================
+
+Snaphost Backup & Restore -> when we loose data( or to change the zones of the volumes, copy the data from one snapshot to other regions)
+1. Unmount partition 
+2. detach volume -> which is corrupted 
+3. create a new volume from snapshot
+4. Attach the volume created from snapshot 
+5. Mount It back
+
+Steps -> when a volume gets corrupted -> detach the corrupted volume -> create a snapshot new volume -> Then snapshot volume shows in the volume then attach the instance Id to it then you should be able to see the data which has been lost.
+
+==============EBS(Elastic Load Balancer)===============
+1.Fronted Port: listens from the user requests on this port AKA listeners
+	eg: 80,443,25 etc
+2. Backend Ports: Services running on OS listening on this port
+	eg: 80,443,8080 etc
+
+It balances the input traffic across multiple targets, such as amazon ec3 instances, containers, and ip addresses, in mulptiple availability zones 
+Three types of ELB -> 
+1. Application Load balancer(Http & Https) -> Routes traffic based on advanced application level information that includes the content of the request(layer 7 balancer)
+2. Network load balancer  -> it functions on the fourth layer of the OSI model, It can handle million requests per second, (Static IP- attach Elastic Ip)	
+3. Classic load balancer -> normal balancing tech which balances the traffic across the availability zones( rarely used in real world)
+4. Gateway load balancer -> to manage firewalls
+
+==========creating a instance with the ready templates===================
+create a template and save it 
+go to that template and select launch instance with this template
+
+====================ELB(Elastic load Balancer)======================
+
+To monitor the health of the instance(When you deploy a website), you can add this in the load balancers target groups(is a group of instances health checks will be done)
+If it is unhealthy it will not route the request to the instance whatever traffic comes to the server 
+1. HTTP 
+2. health check pass -> http/1.3.4.3/vedios or / 
+3. traffic Port or other
+4. healthy threshold -> No of times it checks whether the instance is healthy
+5. Unhealthy threshold -> 2 time to will go to unhealthy state basically this is done by exit codes
+6. Timout -> The amount of in seconds, during which no response means a failed check
+7. Interval -> the appropriate amount of between health check 
+8. Success_Code -> 200 
+9. select instances -> port 80 -> include as pending below -> instances will be added for health checks
+
+Creating a load Balancer 
+1. create load balancer
+2. select ALB (Application load balancer for http and https traffic)
+3. health-snb 
+4. select all zones means high availabil;litu 
+5. security group -> health-elb-sg
+6. Inbound rule -> create 
+add security groups if the website is not loading 
+7. Take dns name in chrome 
+8. check security group
+7. check inbound rules whether it
+10. Refresh the load balancer to view the connection 
+
+
+=====================Cloudwatch==========================
+
+1. Cloud watch - Monitor perfomance of AWS environment - standard infrastructure metrics 
+2. Metrics - AWS Cloud watch allows, you to record metrics for service such as 	ELB,EC2,ELB,Route53 health checks, RDS, Amazon S#, Cloudfront etc ..
+	You will be able to see all the metrics  like cpu,disks,volumes etc.. see this in 	monitoring after selecting an instance.
+3. Events - AWS Events delivers a near real time stream of system events that describe changes in amazon web services (AWS) resources 
+4. Logs - To monitor store and access your log files from amazon elastic compute cloud(Amazon EC2) instances,AWS CloudTrail, Route s3 and other sources 
+
+Alarm notification through SNS(Email Notification)
+Usually the cloudwatch monitor for every 5min if we need to do then enable detailed monitoring
+
+Install Stress Utility -> stress is a tool which we will stress on certain metrics like (increase CPU etc)
+sudo  amazon-Linux-extras install epel -y , sudo yum install stress -y 
+nohup stress -c 4 -t 300 
+
+And then oberserve the metrics in CloudWatch
+
+======================EFS(Amazon Elastic File system)===========================
+
+Amazon Elastic File System (Amazon EFS) provides serverless, fully elastic file storage so that you can share file data without provisioning or managing storage capacity and performance. Amazon EFS is built to scale on demand to petabytes without disrupting applications, growing and shrinking automatically as you add and remove files. Because Amazon EFS has a simple web services interface, you can create and configure file systems quickly and easily. The service manages all the file storage infrastructure for you, meaning that you can avoid the complexity of deploying, patching, and maintaining complex file system configurations.
+
+Amazon EFS supports the Network File System version 4 (NFSv4.1 and NFSv4.0) protocol, so the applications and tools that you use today work seamlessly with Amazon EFS. Amazon EFS is accessible across most types of Amazon Web Services compute instances, including Amazon EC2, Amazon ECS, Amazon EKS, AWS Lambda, and AWS Fargate.
+
+The service is designed to be highly scalable, highly available, and highly durable. Amazon EFS offers the following file system types to meet your availability and durability needs:
+
+Regional (Recommended) – Regional file systems (recommended) store data redundantly across multiple geographically separated Availability Zones within the same AWS Region. Storing data across multiple Availability Zones provides continuous availability to the data, even when one or more Availability Zones in an AWS Region are unavailable.
+
+One Zone – One Zone file systems store data within a single Availability Zone. Storing data in a single Availability Zone provides continuous availability to the data. In the unlikely case of the loss or damage to all or part of the Availability Zone, however, data that is stored in these types of file systems might be lost.
+
+For more information about file system types, see EFS file system types.
+
+Amazon EFS provides the throughput, IOPS, and low latency needed for a broad range of workloads. EFS file systems can grow to petabyte scale, drive high levels of throughput, and allow massively parallel access from compute instances to your data. For most workloads, we recommend using the default modes, which are the General Purpose performance mode and the Elastic throughput modes.
+
+General Purpose – The General Purpose performance mode is ideal for latency-sensitive applications, like web-serving environments, content-management systems, home directories, and general file serving.
+
+Elastic – The Elastic throughput mode is designed to automatically scale throughput performance up or down to meet the needs of your workload activity.
+
+Steps to create to EFS file system - 
+1. Create security grp which will allow incoming traffic from the ec2 instance 
+2. Open file systems and create a filesystem and attach the newly created security group 
+3. This can be accessed by iam as well but create the accesspoint for the created filesystem 
+4. Install  amazon-efs-utils follow the documentation for amazon Linux - > sudo yum install amazon-efs-utils
+5. Next to mount the dir to nfs - This can done by iam user as well check the doc 
+To automatically mount a file system using an EFS access point add the following line to the /etc/fstab file 
+
+<file-system-id> <efs-mount-point> efs _netdev,tls,accesspoint=access-point-id 0 0 
+fs-03b06ca2dd4133417 /var/www/html/img efs _netdev,tls,accesspoint=fsap-041950cf50bbfff56 0 0
+
+> mount -fav 
+[root@ip-172-31-30-159 images]# mount -fav
+/                        : ignored
+/boot/efi                : already mounted
+/var/www/html/images     : successfully mounted
+[root@ip-172-31-30-159 images]# df -h
+Filesystem      Size  Used Avail Use% Mounted on
+devtmpfs        4.0M     0  4.0M   0% /dev
+tmpfs           475M     0  475M   0% /dev/shm
+tmpfs           190M  556K  190M   1% /run
+/dev/xvda1      8.0G  1.6G  6.4G  20% /
+tmpfs           475M     0  475M   0% /tmp
+/dev/xvda128     10M  1.3M  8.7M  13% /boot/efi
+tmpfs            95M     0   95M   0% /run/user/1000
+127.0.0.1:/     8.0E     0  8.0E   0% /var/www/html/images
+
+====================== Auto Scaling =======================================================
+
+Auto Scaling is a service that automatically monitors and adjusts compute resources to maintain performance for applications hosted in the aws it can add instances based on utilization which is obtained from the cloudwatch metrics also it can scale down to reduce the cost 
+
+alarm monitors cloudwatch mertcics for instances 
+
+Template-> A launch template is an instance configuration template that and auto scaling group uses to launch ec2 instances 
+scaling policy -> Scaling policy is used to increase and descrease the number of running instances in the group dynamically to meet changing conditions
+ 
+Need This things first 
+1. Launch Template 
+2. Need target group and security groups to the loadbalancer 
+4. Go to autoscaling and start configuring 
+
+=================================== Amazon S3 (Simple Storage service)===================================
+Storafe for the internet. Can use amazon s3 to store and retrieve any amount of data at any time, from anywhere on the web.
+S3 Basics:
+1. Is is Object based storage 
+2. Data is replicated across multiple facilities
+3. unlimited Storage 
+4. Amazon s3 storrs data as objects within buckets 
+5. Bucket name has to be unique.
+
+A bucket is a logical unit of storage unit of storage in AWS 
+Object Storage is computer data storage architecture that manages data as objects 
+
+Amazon s3 
+   -> Bucket 
+          -> Folder 
+                ->  Object 
+                       -> public access 
+
+
+S3 Storage Classes 
+1. S3 Standard: 
+General purpose storage of frequently accessed data. Fast access & object replication in multi AZ
+2. S3 IA - Infrequent Access 
+Long lived, but less frequently accessed data. slow access , object replication in multi AZ
+3. S3 one zone-IA
+Is for data that is accessed less frequently, but requires rapid access when needed. slow access, no replication 
+4. S3 Glacier: 
+Low cost storage class data archiving
+5. S3 Glacier Deep Archive 
+Lowest cost storage, retrieval 
+
+Create a bucket with all small letters, By default amazon makes the objects in the bucket as private in order to make public acl (access control list) should be enabled, and in permissions disbale block public access and then in action we can enable public access acl for the objects, also we can host static websites in s3 in the permission page 
+
+
+========================= AWS Lamda Functions =================
+
+Most AWS beginners think Lambda is just “code that runs in the cloud.”
+Here’s how to turn that into real, scalable, event-driven workflows:
+
+STEP 1 – Understand what triggers Lambda
+S3 upload, API Gateway, CloudWatch, DynamoDB, and more
+Example: A photo is uploaded to S3 → Lambda auto-resizes it
+
+STEP 2 – Run your code without servers
+You write the function (Node.js, Python, etc.)
+Lambda handles the infrastructure behind the scenes
+
+STEP 3 – Let AWS handle scaling
+It auto-scales horizontally to meet demand
+No need to provision or manage EC2 instances
+
+STEP 4 – Only pay for what you use
+You’re charged per request and duration
+Ideal for short, on-demand tasks
+s
+STEP 5 – Use CLI commands to stay productive
+List, update, delete, or invoke functions from your terminal
+Fast iteration, zero server management
+
+=========================== RDS =================================
+
+Installs 
+patching 
+monitoring 
+performaance tuning 
+backups 
+scaling 
+security 
+hardware upgrades 
+storage management 
+
+Amazon rds service is distributed relational database 
+high availability multi az deployemnts
+effortless scaling 
+read replicaas for perfomance 
+
+
+============================Maven( A build tool Used for automatic build process for java webapplications)====================================
+Buid Process (Packages)
+Source Code -> Compile -> tests -> packaging -> health Checks
+
+Build Tools decided by the application stack: 
+Maven -> java, Build file:XML Format 
+Ant -> java, Build file: XML Format 
+MsBuild->  The Microsoft Build Engine is platfrom for building applicaitons 
+Gradle -> DSL Based on Groovy
+& NANT -> Windows .net platform 
+Make -> build executable programs and libraries from source code 
+
+Maven Phases:
+VALIDATE , Compile, test , package ,itegration-test, verify, install , deploy 
+
+1. mvn validate -> Validate the porject is correct and all necessary information is available 
+2. Compile -> compile the source code of the project 
+3. test -> test the compiled source code using a suitable unit testing framework. These tests should not require teh coce be packaged or deployed 
+4. package -> take the compiled code and package it in its distributeable format, sucha as JAR
+5. verfify -> run any checks on results in intergration tasks to ensure quality criteria are met 
+6. Install -> install the package into the local repsoitory. for use as dependency in other projects locally 
+7. deploy - done in the build enbironment copies the final package to the remote repository for sharing with other developer and projects 
+
+https://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html
+https://github.com/hkhcoder/vprofile-project/tree/main -> Example for maven project 
+
+If you see any pom.xml in any projects that is a java project which maven tool build
+Maven Installation: 
+1. dependecy is it required jdk- 11/8 by default it will install jdk 11 if you do sudo apt install maven -y 
+If you are running differnt version of mvn then you should download the tar ball and use it 
+
+Clone a project: git clone https://github.com/hkhcoder/vprofile-project.git
+
+ubuntu@ip-172-31-95-15:~/vprofile-project$ mvn validate
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ---------------------< com.visualpathit:vprofile >----------------------
+[INFO] Building Visualpathit VProfile Webapp v2
+[INFO] --------------------------------[ war ]---------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.233 s
+[INFO] Finished at: 2025-03-18T07:35:25Z
+[INFO] ------------------------------------------------------------------------
+ubuntu@ip-172-31-95-15:~/vprofile-project$ mvn test will run the test cases and give the output and target dir will be created which can be cleaned by mvn clean 
+
+After doing this the expected (developer expected which can be seen in pom.xml) jar/war will be created for the project in target dir 
+
+Whenever you should change the maven version and build DO this: 
+To remove the old dependencies -> rm -rf ~/.m2/repository* 
+To clean -> mvn clean 
+
+To build the artifacts from other maven version like 3.9.4 -> /opt/apache-maven-3.9.3.bin/mv/install  (from the tarball), Clean the older artifacts and make the maven verson changes in pom.xml 
+
+Then run -> mvn clean install
+
+============================== Jenkins ======================================
+Note: To get the public IP In the VM run command: curl -s ifconfig.me → Public IP
+      Jenkins require jdk 17 (recommended)
+Install - Jenkins on ubuntu 
+
+sudo wget -O /usr/share/keyrings/jenkins-keyring.asc \
+  https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc]" \
+  https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+  /etc/apt/sources.list.d/jenkins.list > /dev/null
+sudo apt-get update
+sudo apt-get install jenkins
+
+
+
+ss -tunlp  |grep 8080 -> should be listining 
+Open browser and type pulicIp:8080 
+and it will ask for password -> get it from 
+root@ip-172-31-18-253:/etc/systemd/system# cat /var/lib/jenkins/secrets/initialAdminPassword
+c21debdee6d843a584fc3fd55740d53a
+
+Install required plugins 
+
+Give Jenkins url: can give anything 
+http://jenkins_learning.com
+
+
+Freestyle vs pipeline as a code 
+Freestyle jobs
+  graphical jobs 
+   learning understadning @ exploring jenskins
+    Not recommended in real time now 
+
+Pipeline as a code 
+   Pipeline created in groovy 
+   recommended now 
+   
+Jenkins Plugins: 
+To Install plugins -> click on manage engine and go to available plugins
+
+============================ Creating a CI for jenkins with this tools =========================================
+
+                GITHUB(Centralized Repo)
+						|
+                        |																																		SONAR SERVER																NEXUS SERVER	
+   developer(git)  -- --| 																																		   |		   																	|
+						|																																		   | (Generated Reports updated to Sonarqube Server)							| (Versions Will be generated and uploaded to nexux repo)	
+						| (Detect Code Change)                                                                                                                     |																			|				
+                       Jekins  -> fetch code from github ------------> Maven(JAVA code) ----------------->      Unit Tests(Maven)      -----------------> Code Analysis Tool (Continous inspection using Sanarqube) -------------------> Upload Artifacts  
+														  (Buid Tool)                  (Created Artifacts)  (Run the test & generate Reports)               (Checks vulnerability,Bug Analysis)                       if this passes 
+                                                                                                                                                             (Build Dashboard for report analysis)
+Steps to create CI (The setup script is on gitub -> https://github.com/hkhcoder/vprofile-project/blob/atom/)  
+1. Jekins Setup 
+2. Nexus Setup (Sonar nexus repository)-> publicIp:8080
+3. Sanarqube Setup -> publicIp:80
+4. Security Group 
+5. plugins in jenkins
+6. Intergrate -> nexus and sanarqube 
+7. Wtrite pipeline scripts
+8. Set notification 
+
+Some Important linux system configuration settings In nexus and sunarqube 
+vm.max_map_count=262144	Memory mappings per process	65530	Required for Elasticsearch, databases, JVM apps
+fs.file-max=65536	Max open files (system-wide)	~2097152	Prevents "Too many open files" errors
+ulimit -n 65536	Max open files per process	1024-4096	Needed for high-traffic apps like Nginx
+ulimit -u 4096	Max user processes	1024-4096	Prevents process flooding
+
+
+After setup these are the Required CI plugins: 
+1. Nexus -> To integrate Jenkins with Nexus 
+2. Sanrqube -> To integrate jenkins with Sanarqube
+3. Git -> To fetch the code from git central repo
+4. Pipeline Maven Inegration plugin  -> To Build the JAVA code with maven
+5. BuildTimestamp  -> To give the versioning for generated artifacts
+
+
+Note: For jenkins to communicate with sonarqube and nexus appropriate security groups should be given to communicate in inbound rule for each server 
+
+
+
+*****Pipeline Concepts: 
+Intro: 
+-> Automate pipeline setup with jenkinsfile 
+-> Jenkinsfile defines Stages in CI/CD Pipeline 
+-> Jenkinsfile is a text file with pipeline DSL Syntax
+-> Similar to groovy 
+-> Two Syntax 1. Scripted | 2. Declarative (In this we are using this in the current project)
+
+1. Pipeline    -> The main configuration that has all the steps 
+2. Node/Agent  -> Setting where this pipeline should be executed 
+3. Stage       -> Executions 
+4. Steps -> LIKE Maven Install, gitpull, upload artifacts to nexus
+
+Syntax: 
+
+**************** SAMPLE Jenkinsfile ***********************************
+pipeline{ 
+	agency any
+	stages{ 
+	   stage('Build'){ 
+	     steps{
+		  //
+		  }
+		}
+		stage('Test'){
+		  steps{
+		  }
+		}
+		stage('Deploy'){
+		   steps{
+		   //
+		   }
+		}
+	}
+}  	
+********************* SAMPLE Jenkinsfile ********************************
+
+pipeline {
+    agent any  // Runs on any available agent (can specify 'node' or 'docker' if needed)
+    
+    tools {
+        maven 'Maven 3.8.1'  // Define tools like Maven, JDK, Gradle, etc.
+    }
+
+    environment {
+        APP_ENV = 'production'  // Set environment variables
+        JAVA_HOME = '/usr/lib/jvm/java-11-openjdk'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Cloning the repository...'
+                git 'https://github.com/example/repo.git'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo 'Building the application...'
+                sh 'mvn clean package'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo 'Running tests...'
+                sh 'mvn test'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo 'Deploying the application...'
+                sh './deploy.sh'
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'This will always run, regardless of success or failure'
+        }
+        success {
+            echo 'Build completed successfully! 🎉'
+        }
+        failure {
+            echo 'Build failed! ❌'
+        }
+    }
+}
+
+
+Explanation:
+
+ :Section:	                            :Purpose:
+ agent any	            Runs on any available Jenkins agent (can specify label 'node-name' or docker { image 'node:14' })
+ tools	                Defines required tools like Maven, JDK, Gradle
+ environment	            Defines environment variables for the pipeline
+ stages	                Contains multiple stage blocks for Checkout, Build, Test, and Deploy
+ post	                Defines actions that run after the pipeline (e.g., notifications, cleanup)	   
+
+***************** Asking chatgpt to upload the artifacts to s3 bucket, code is builded from maven tool *********************** 
+
+pipeline {
+    agent any
+
+    environment {
+        S3_BUCKET = 'your-s3-bucket-name'
+        AWS_REGION = 'your-aws-region' // Example: us-east-1
+        ARTIFACT_PATH = 'target/*.jar' // Adjust based on your build output
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/your-repo.git'
+            }
+        }
+
+        stage('Build with Maven') {
+            steps {
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+
+        stage('Upload to S3') {
+            steps {
+                withAWS(credentials: 'your-aws-credentials-id', region: "${AWS_REGION}") {
+                    sh """
+                        aws s3 cp ${ARTIFACT_PATH} s3://${S3_BUCKET}/ --recursive
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Build and upload successful!"
+        }
+        failure {
+            echo "Build or upload failed."
+        }
+    }
+}
+
+============================(JENKINS FILE For the vpofile-project CI)==========================================================
+***Jenkinsfile********
+
+pipeline{
+    agent any 
+    tools {
+        maven "MAVEN3.9"
+        jdk "JDK17"
+    }
+    stages {
+        stage('Fetch Code'){
+            steps{
+                echo "========executing Fetch Code========"
+                git branch: 'atom', url: 'https://github.com/hkhcoder/vprofile-project.git'
+            }
+        }
+
+        stage('Unit Test'){
+        steps{
+            echo "========executing Unit Test========"
+            sh 'mvn-test'
+            }
+        }
+
+        stage('Build'){
+        steps{
+            echo "========executing mvn========"
+            sh 'mvn install -DskipTests'
+            }
+            post {
+                success { 
+                    echo "Archiving artifact"
+                    archiveArtifacts artifacts: '**/target/*.war'
+                }
+            }
+        }
+		
+		 stage("UploadArtifact"){
+            steps{
+			    echo "Uploading artifacts to nexus repo"
+                nexusArtifactUploader(
+                  nexusVersion: 'nexus3',
+                  protocol: 'http',
+                  nexusUrl: '172.31.25.14:8081',
+                  groupId: 'QA',
+                  version: "${env.BUILD_ID}-${env.BUILD_TIMESTAMP}",
+                  repository: 'vprofile-repo',
+                  credentialsId: 'nexuslogin',
+                  artifacts: [
+                    [artifactId: 'vproapp',
+                     classifier: '',
+                     file: 'target/vprofile-v2.war',
+                     type: 'war']
+                  ]
+                )
+            }
+        }
+
+    }
+ 
+}
+
+*************** Steps in building the pipeline ********************* 
+
+1 ->  Create a new item and select pipeline and build this you can see the stages in the stages section
+2 -> Sonarqube: Till here it will just build the code next steps are to run unit test and if it successfull to upload the reports to sonar server to check code anaylsis, vulnerability checks etc.
+		* Go in tools and add the sonarqube version and select install from the maven central  version sonar cube    scanner 6.2.1.4610
+		* Go in system configuration chek on sonarserver environment give the private ip since it is in the same vpc and generate the sonartoken and upload it secret text in the jenkins	
+3 -> *******Adding Quality gats in sonarqube: add quality gates select on overall code > bugs are greater than 30 dont pass this test, and update the same with your project it will be set as defaultbuilt in quality gate and save with created one, Now how it will communicate with jenkins ??? we need to create a webhook -> project settings ->  create webhook -> jenkins-ci-webhook(Name) -> url -> http://privateIpJenkins/sonarqube-webhook -> create 
+Also confirm jenkins allows sonarqube on port 8080************ -> Now if this works the stage should fail in quality gate if bugs are more than threshold
+4 -> Nexus Repo: 
+      Software Repositories Nexus 
+		* We can store all the dependencies in nexus so that we can install from this insted installing from internet 
+		Your own Repo for software/packages 
+		1. Maven -> Maven Dependencies 
+		2. apt -> packages for debain based systems 
+		3. yum -> packages for redhat based systems 
+		4. nuget -> package manager for .net 
+		5. npm -> package manager for Javascript 
+		6. docker -> Registry to strore docker images
+		7. Also we can add versioning on the artifacts
+** Add the nexus credentials in jenkins credentials page here also we can add the credentials
+make sure there is enough space on the agent that is node and run the build now you can see the artifacts in the nux repo with versioning with help of timestamp plugin. Now the full pipeline is ready 
+5. Add notification to slack or any tool -> 
+5. Now all this steps in pipeline
+6 ->  Here is the continous pipeline  
+
+
+********************************** Continuation of the above pipeline *******************
+
+def COLOR_MAP = [
+    'SUCCESS': 'good', 
+	'FAILURE': 'danger'
+]
+
+pipeline{
+    agent any 
+    tools {
+        maven "MAVEN3.9"
+        jdk "JDK17"
+    }
+    stages {
+        stage('Fetch Code'){
+            steps{
+                echo "========executing Fetch Code========"
+                git branch: 'atom', url: 'https://github.com/hkhcoder/vprofile-project.git'
+            }
+        }
+
+        stage('Unit Test'){
+        steps{
+            echo "========executing Unit Test========"
+            sh 'mvn-test'
+            }
+        }
+
+        stage('Build'){
+        steps{
+            echo "========executing mvn========"
+            sh 'mvn install -DskipTests'
+            }
+            post {
+                success { 
+                    echo "Archiving artifact"
+                    archiveArtifacts artifacts: '**/target*.war'
+                }
+            }
+        }
+
+        stage('Unit Test'){
+        steps{
+            echo "========executing Unit Test========"
+            sh 'mvn-test'
+            }
+        }
+
+        stage('Checkstyle Analysis'){
+        steps{
+            echo "============Code Analyis by maven using checksyle plugin========================="
+            sh 'mvn checkstyle:checkstyle'
+            }
+        }
+
+        stage('Sonar Code Analysis'){
+            environment {
+                scannerHome = tool 'sonar6.2'
+            }
+            steps{
+                echo "============Sonar code analysis=========================="
+                withSonarQubeEnv('sonarserver'){ 
+                    sh '''${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=vprofile \
+                   -Dsonar.projectName=vprofile \
+                   -Dsonar.projectVersion=1.0 \
+                   -Dsonar.sources=src/ \
+                   -Dsonar.java.binaries=target/test-classes/com/visualpathit/account/controllerTest/ \
+                   -Dsonar.junit.reportsPath=target/surefire-reports/ \
+                   -Dsonar.jacoco.reportsPath=target/jacoco.exec \
+                   -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml'''
+                }
+                }
+        }
+		
+		stage('Quality Gates'){
+        steps{
+             timeout(time:1, unit: 'HOURS') { 
+                waitForQualitygate abortPipeline: true
+             }
+            }
+        }
+    }
+	
+  post {
+        always {
+            echo 'Slack Notifications.'
+            slackSend channel: '#devopscicd',
+                color: COLOR_MAP[currentBuild.currentResult],
+                message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} \n More info at: ${env.BUILD_URL}"
+        }
+    }
+}
+
+Note: you can see the code analysis in sonar projects secions the name with vprofile will be created
+      you can see the artifacts in nexus repo 
+	  you see the notification in slack channel
+	  
+	  
+	  
+	
+************************* WHY Code Analysis *************************
+1. Best practises 
+2. Vulnerabilities in code (Owasp tool)
+3. Functional Errors before deployment 
+
+
+================================ Intergrating jenkins with docker Continuation of vprofile uploading artifacts as  image with docker and upload it to Amazon ECR (Elastic container Registry) ===========================
+
+
+Prerequisites: 
+1. Aws -> IAM USER with access keys , ECR Registry (docker registry from AWS)
+2. Plugins -> Docker, docker pipeline, ecr, aws sdk
+4. Jenkins -> Stroe aws acceess keys (credentials), Install Docker engine in jenkins, Install aws cli
+
+
+																				                  AMAZON ECR-----------------------|
+FLOW: 																				                 |                             |
+																				   Artifacts	     |         ECS deploy          |
+Develepor(git) -> fetch code -> maven -> checkstyle -> codeanalysis(sonarqube) -----------------> dockerbuild ---------------------|->   AMAZON ECS
+
+							
+**** CONTINOUS INTEGRATION ***************
+		
+pipeline {
+    agent any
+    tools {
+        maven "MAVEN3.9"
+        jdk "JDK17"
+    }
+
+
+    environment {
+        registryCredential = 'ecr:us-east-2:awscreds'
+        appRegistry = "951401132355.dkr.ecr.us-east-2.amazonaws.com/vprofileappimg"
+        vprofileRegistry = "https://951401132355.dkr.ecr.us-east-2.amazonaws.com"
+    }
+  stages {
+   
+        stage('Fetch code') {
+            steps {
+               git branch: 'docker', url: 'https://github.com/hkhcoder/vprofile-project.git'
+            }
+
+        }
+
+
+        stage('Build'){
+            steps{
+               sh 'mvn install -DskipTests'
+            }
+
+            post {
+               success {
+                  echo 'Now Archiving it...'
+                  archiveArtifacts artifacts: '**/target/*.war'
+               }
+            }
+        }
+
+        stage('UNIT TEST') {
+            steps{
+                sh 'mvn test'
+            }
+        }
+
+        stage('Checkstyle Analysis') {
+            steps{
+                sh 'mvn checkstyle:checkstyle'
+            }
+        }
+
+        stage("Sonar Code Analysis") {
+            environment {
+                scannerHome = tool 'sonar6.2'
+            }
+            steps {
+              withSonarQubeEnv('sonarserver') {
+                sh '''${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=vprofile \
+                   -Dsonar.projectName=vprofile \
+                   -Dsonar.projectVersion=1.0 \
+                   -Dsonar.sources=src/ \
+                   -Dsonar.java.binaries=target/test-classes/com/visualpathit/account/controllerTest/ \
+                   -Dsonar.junit.reportsPath=target/surefire-reports/ \
+                   -Dsonar.jacoco.reportsPath=target/jacoco.exec \
+                   -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml'''
+              }
+            }
+        }
+
+        stage("Quality Gate") {
+            steps {
+              timeout(time: 1, unit: 'HOURS') {
+                waitForQualityGate abortPipeline: true
+              }
+            }
+          }
+
+        stage('Build App Image') {
+          steps {
+       
+            script {
+                dockerImage = docker.build( appRegistry + ":$BUILD_NUMBER", "./Docker-files/app/multistage/")
+                }
+          }
+    
+        }
+
+        stage('Upload App Image') {
+          steps{
+            script {
+              docker.withRegistry( vprofileRegistry, registryCredential ) {
+                dockerImage.push("$BUILD_NUMBER")
+                dockerImage.push('latest')
+              }
+            }
+          }
+        }
+
+  }
+}
+
+******** CONTINOUS DELIVERY ***************
+
+pipeline {
+    agent any
+    tools {
+        maven "MAVEN3.9"
+        jdk "JDK17"
+    }
+
+
+    environment {
+        registryCredential = 'ecr:us-east-2:awscreds'
+        appRegistry = "951401132355.dkr.ecr.us-east-2.amazonaws.com/vprofileappimg"
+        vprofileRegistry = "https://951401132355.dkr.ecr.us-east-2.amazonaws.com"
+        cluster = "vprofile"
+        service = "vprofileappsvc"
+    }
+  stages {
+   
+        stage('Fetch code') {
+            steps {
+               git branch: 'docker', url: 'https://github.com/hkhcoder/vprofile-project.git'
+            }
+
+        }
+
+
+        stage('Build'){
+            steps{
+               sh 'mvn install -DskipTests'
+            }
+
+            post {
+               success {
+                  echo 'Now Archiving it...'
+                  archiveArtifacts artifacts: '**/target/*.war'
+               }
+            }
+        }
+
+        stage('UNIT TEST') {
+            steps{
+                sh 'mvn test'
+            }
+        }
+
+        stage('Checkstyle Analysis') {
+            steps{
+                sh 'mvn checkstyle:checkstyle'
+            }
+        }
+
+        stage("Sonar Code Analysis") {
+            environment {
+                scannerHome = tool 'sonar6.2'
+            }
+            steps {
+              withSonarQubeEnv('sonarserver') {
+                sh '''${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=vprofile \
+                   -Dsonar.projectName=vprofile \
+                   -Dsonar.projectVersion=1.0 \
+                   -Dsonar.sources=src/ \
+                   -Dsonar.java.binaries=target/test-classes/com/visualpathit/account/controllerTest/ \
+                   -Dsonar.junit.reportsPath=target/surefire-reports/ \
+                   -Dsonar.jacoco.reportsPath=target/jacoco.exec \
+                   -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml'''
+              }
+            }
+        }
+
+        stage("Quality Gate") {
+            steps {
+              timeout(time: 1, unit: 'HOURS') {
+                waitForQualityGate abortPipeline: true
+              }
+            }
+          }
+
+        stage('Build App Image') {
+          steps {
+       
+            script {
+                dockerImage = docker.build( appRegistry + ":$BUILD_NUMBER", "./Docker-files/app/multistage/")
+                }
+          }
+    
+        }
+
+        stage('Upload App Image') {
+          steps{
+            script {
+              docker.withRegistry( vprofileRegistry, registryCredential ) {
+                dockerImage.push("$BUILD_NUMBER")
+                dockerImage.push('latest')
+              }
+            }
+          }
+        }
+
+        stage('Remove Container Images'){
+            steps{
+                sh 'docker rmi -f $(docker images -a -q)'
+            }
+        }
+
+
+        stage('Deploy to ecs') {
+          steps {
+            withAWS(credentials: 'awscreds', region: 'us-east-2') {
+            sh 'aws ecs update-service --cluster ${cluster} --service ${service} --force-new-deployment'
+               }
+          }
+      }
+  }
+}
+
+Note: Here we learnt how to push images to ecr and pull the image in ecs and use alb to run the applicaiton and containers 4
+
+
+
+
+========================== Job Triggers(To trigger the jenkins jobs automatically) ====================================
+Popular triggers]
+1. Git Webhook 
+2. Poll SCM -> any new commit will be triggered
+3. Scheduled Jobs -> 
+4. Remote trigggers -> 
+5. Build after other projects are built 
+
+Steps: 
+1. Create git rep on github
+2. ssh auth
+3. create a jenkinsfile in git repo & commit 
+4. Create Jenkins job to access jenkinsfile from git repo 
+5. Test triggers
+
+
+1. Create a git private repo 
+2. take local public key(.ssh/public.pem) go to github account -> settings -> ssh and gpg keys -> new ssh key -> give title -> paste public -> add ssh key 
+3. go to repo copy the repo https link 
+4. create a dir mkdir -p /f/gitrepos, go to the and clone the repo using : git clone git@github.com:imranvishualpath/jenkinstriggers.git
+5. cd jenkinstriggers/ 
+6. place a jenkins file 
+   -Jenkinsfile 
+   
+      pipeline{ 
+	    agent any 
+		stages { 
+		  stage('Build') { 
+		    sh 'echo "Build completed."'
+		  }
+		 }
+		}
+7.  git add . 
+8. git commit -m "first commit"
+9. git push -u origin master
+10. Go to manage jekins -> configure global security -> git host verifcation configuration -> select accept first connection
+11. create job -> pipeline -> select pipeline code from scm(source code manager) -> git -> give the repo url (ssh url)
+12. add credentials -> username with private key -> id -> gitsshkey -> username -> copy private key(id_rsa) -> add necessary and save and build.
+
+
+======================= Trigger Options =====================================
+
+1. Github webhook -> 
+	 copy jenkins url ->go to gethub setting add webhooks -> paste the jenkins url with /git-webhook -> http://18.221.221.216:8080/git-webhook
+	 select for what operation you need to trigger (example: for every push)
+	 add webhook (8080 should be allowed from anywhere)
+	 GO to jenkins job -> configure -> build tiggers -> check box github hook trigger on gitscm plling -> save 
+	 make a commit and you can see the job will be exucted automatically 
+	 
+2. poll scm -> now jenkins will check for any change enabling this 
+      just uncheck the other one and check for poll scm and give the schedule in cron job format
+	  
+3. Scheduled jobs -> 
+	  check on build periodically same as cron
+
+4. Remote Triggers -> 
+	  From anywhere trigger the job (8080 should be enabled from where you want to trigger this)
+	Steps: 
+	
+Generate JOB URL
+1. Job Configure => Build Triggers
+2. Check mark on “Trigger builds remotely”
+3. Give a token name
+4. Generate URL & save in a file
+Generate Token for User
+1. Click your username drop down button (Top right corner of the page)
+2. configure => API Token => Generate
+3. Copy token name and save username:tokenname in a file
+Generate CRUMB
+1. wget command is required for this, so download wget binary for git bash
+2. Extract content in c:/program files/Git/mingw64/bin
+3. Run below command in Git Bash, (replace username,password,Jenkins URL)
+wget -q --auth-no-challenge --user username --password password --output-document -
+'http://JENNKINS_IP:8080/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,":",//crumb)'
+4. Save the token in a file
+Build Job from URL
+By now we should have below details
+1. JENKINS Job URL with token
+E:g http://52.15.216.180:8080/job/vprofile-Code-Analysis/build?token=testtoken
+2. API Token
+USERNAME:API_TOKEN
+E:g admin:116ce8f1ae914b477d0c74a68ffcc9777c
+3. Crumb
+E:g Jenkins-Crumb:8cb80f4f56d6d35c2121a1cf35b7b501
+
+Fill all the above details in below URL and Execute this -----------------------> 
+curl -I -X POST http://username:APItoken @Jenkins_IP:8080/job/JOB_NAME/build?token=TOKENNAME
+-H "Jenkins-Crumb:CRUMB"
+e:g curl -I -X POST http://admin:110305ffb46e298491ae082236301bde8e@52.15.216.180:8080/job/
+vprofile-Code-Analysis/build?token=testtoken -H "Jenkins-Crumb:8cb80f4f56d6d35c2121a1cf35b7b501"
+
+-------------------- END OF JENKINS JOBS AND TRIGGERS -------------------------
+
+======================== Jenkins master and slave ==========================
+Use cases
+1. Load Distribution -> Jenkins amter executes build job on node it selected 
+2. Cross Platform Builds -> Executing build of other palforms like .net(windoes), IOS(mac) from jenkins master (Linux)
+3. Software testing -> Execute tester test autumation scripts from node 
+
+-> Manage jenkins -> manage nodes and clouds -> create new node -> give new name -> add the details -> 
+
+
+================================ JENKINS SECURITY ===============================
+User, permissions, roles , jobs permissions
+
+User login, jenkins own dtabase, sign up, ldapa integration 
+permissions on jenkins -> admin, read, jobs, credentials, plugins
+permissions on jobs -> view, build, delete, configure etc.
+
+Go to manage jenkins -> configure global security -> 
+ 
+======================= Python ==================================
+
+Module Fabric: Similar advantages like ansible usefull while we have do changes in all 100 servers from one server 
+
+The Fabric module in Python is a high-level library for streamlining SSH communication and remote server automation. It is commonly used for deployment, administration, and task automation on remote machines.
+
+Key Features of Fabric:
+Remote Command Execution: Run shell commands on remote servers over SSH.
+File Transfers: Upload and download files between local and remote systems.
+Parallel Execution: Execute tasks across multiple hosts in parallel.
+Local Command Execution: Run shell commands on the local machine.
+Secure Connections: Uses SSH for secure communication.
+Reusable Tasks: Define automation tasks in Python scripts.
+
+Search for scripts which manage jenkins and aws (Module called Boto)
+
+
+
+============================== Terafform ==================================
+
+
+1. Terraform is a tool to manage the diff cloud provider through scripts 
+
+Sample script to get the ami id of an instance 
+
+Before this create an aws iam user with required permissions: choco install awscli
+
+$aws configure
+add the accesskey_id, secret_key, region and check with this command 
+$ aws sts get-caller-identity --- To verify the configuration
+
+********** terrform.tf *******************
+
+data "aws_ami" "amiID" { 
+
+    most_recent = true
+    filter {
+        name = "name"
+        values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+    }
+
+    filter {
+        name = "virtualization-type"
+        values = ["hvm"]
+    }
+
+    owners = ["099720109477"]
+}
+
+output "instance_id" {
+    description = "AMI Id of Ubuntu instance"
+	value = data.aws_ami.amiID.id
+} 
+   
+   
+Execute Commands In the working project dir ==== 
+1. terraform fmt (Format the code)
+2. terraform plan (terraform plan is like a preview or dry run of what Terraform is about to do before it actually does it.)
+3. terraform init (terraform init initializes a Terraform working directory. It sets up everything Terraform needs to manage your infrastructure based on the code (like the .tf files) in that directory. Think of it as the "get ready" step before you can create, update, or destroy resources.)
+4. terraform validate (To Validate the code)
+5. terraform apply (To apply the changes to the cloud)
+6. terraform refresh ()
+7. terraform state list ()
+8. terraform destroy (Destroy everything in the present dir)
+
+Flow be like -> init, fmt, validate, plan, apply, state list etc
+
+*************** LAUNCHING AN AWS INSTANCE WITH TERRAFORM ***********************
+
+
+What it is: Terraform code to find an AWS AMI (server blueprint).
+Line 1: data "aws_ami" "amiID" - Looks up an AMI, names it amiID.
+Line 2: most_recent = true - Picks the newest matching AMI.
+Filter 1:
+name = "name"
+values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+Means: Find Ubuntu 22.04 server AMI (64-bit, with wildcard for updates).
+Filter 2:
+name = "virtualization-type"
+values = ["hvm"]
+Means: Must use HVM (modern virtualization).
+Owners: owners = ["099720109477"] - Limits to AMIs from this owner 
+Purpose: Fetches the AMI’s ID for use later (e.g., to launch a server).
+Example Use: ami = data.aws_ami.amiID.id in an EC2 resource.
+Notes:
+Terraform needs AWS access to run this.
+
+****************
+keypair.tf
+
+resource "aws_key_pair" "dove-key" {
+  key_name   = "dove-key"
+  public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOCrxVyz7/Lsevpjy6mE8JWMkqX+wkdQtxkLhZk/Af9j vunet@295-ARJUN-KAREKAR-BM7X1B3"
+}
+
+*************
+securityGrp.tf
+
+resource "aws_security_group" "dove-sg" {
+  name        = "dove-sg"
+  description = "dove-sg"
+
+  tags = {
+    Name = "dove-sg"
+  }
+   egress = [] # disables default outbound rule
+}
+
+resource "aws_vpc_security_group_ingress_rule" "ssh_from_my_ip" {
+  security_group_id = aws_security_group.dove-sg.id
+  cidr_ipv4         = "193.186.4.139/32"
+  from_port         = 22
+  ip_protocol       = "tcp"
+  to_port           = 22
+}
+
+resource "aws_vpc_security_group_ingress_rule" "allow_http" {
+  security_group_id = aws_security_group.dove-sg.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 80
+  ip_protocol       = "tcp"
+  to_port           = 80
+}
+
+resource "aws_vpc_security_group_egress_rule" "allow_all_outbound_ipv4" {
+  security_group_id = aws_security_group.dove-sg.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1" # semantically equivalent to all ports
+}
+
+resource "aws_vpc_security_group_egress_rule" "allow_all_outbound_ipv6" {
+  security_group_id = aws_security_group.dove-sg.id
+  cidr_ipv6         = "::0/0"
+  ip_protocol       = "-1" # semantically equivalent to all ports
+}
+
+***************
+Provider.tf
+
+provider "aws" {
+  region = "us-east-1"
+}
+
+
+*****************
+InstanceId.tf
+
+data "aws_ami" "amiID" {
+  most_recent = true
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = ["099720109477"]
+}
+
+output "instance_id" {
+  description = "AMI Id of Ubuntu instance"
+  value       = data.aws_ami.amiID.id
+}
+   
+   
+****************
+
+Instance.tf
+
+resource "aws_instance" "web" {
+  ami                    = data.aws_ami.amiID.id
+  instance_type          = "t2.micro"
+  key_name               = "dove-key"
+  vpc_security_group_ids = [aws_security_group.dove-sg.id]
+  availability_zone      = "us-east-1a"
+  tags = {
+    Name    = "Dove-Web"
+    Project = "Dove"
+  }
+}
+
+resource "aws_ec2_instance_state" "server-state" {
+    instance_id = aws_instance.web.id
+    state = "running"
+}
+
+
+************************** VARIABLES *************************************************
+
+1. Move secretes to another file 
+2. calues that change -> AMI,tags, keypair etc
+3. Reuese your code
+
+
+
+"Provider.tf" 						      "Vars.tf"
+
+									variable AWS_ACCESS_KEY {}
+									variable AWS_SECRET_KEY {}
+Provider "aws"{ 					variable REGION{
+  region = var.REGION					deafault = "us-west-1"
+}									}
+
+
+
+
+"terraform.tfvars" 					     "instance.tf"
+
+
+										variable AMIS { 
+                                          type = "map"										
+resource "aws_instance" "intro" { 		default { 
+  ami = var.AMIS[var.REGION]			   us-west-1 = "ami-06391001ijdfi"
+  instance_type = "t2.micro"			   us-west-2 = "ami-548945"
+}  											}
+										  }
+										  
+This is when you have assign differnt ami id to diff region 
+
+Excercide
+1. Wrtie providers.td file 
+2. Write vars.tf file 
+3. Write instance.tf file 
+4. Apply Changes
+5. Make some changes to instance.tf file 
+6. Apply changes 
+
+
+1. provider.tf ***********
+
+provider "aws" {
+  region = var.region  ##here
+} 
+
+2. Vars.tf ******************
+
+variable "region" {
+  default = "us-east-1"
+}
+
+variable "zone" {
+  default = "us-east-1a"
+}
+
+variable amiID {
+    type = map
+    default = { 
+        us-east-2 = "ami-0354545454545"
+        us-east-1 = "ami-0548495849584"
+    }
+}
+
+3. Instance.tf ******************* 
+
+
+resource "aws_instance" "web" {
+  ami                    = var.amiID[var.region] ###here
+  instance_type          = "t2.micro" 
+  key_name               = "dove-key"
+  vpc_security_group_ids = [aws_security_group.dove-sg.id]
+  availability_zone      = var.zone ###here
+  tags = {
+    Name    = "Dove-Web"
+    Project = "Dove"
+  }
+}
+
+resource "aws_ec2_instance_state" "server-state" {
+  instance_id = aws_instance.web.id
+  state       = "running"
+}
+
+
+
+********************** PROVISIONERS(Script execution from Terfform scripts to remote VM Providers) *********************
+
+Terraform supports remote script execution but it will not know what happened after running the script (Make sure it keep local private key in the terraform folder)
+
+Excercise4
+
+1. web.sh **********
+
+#!/bin/bash
+apt update
+apt install wget unzip apache2 -y
+systemctl start apache2
+systemctl enable apache2
+wget https://www.tooplate.com/zip-templates/2117_infinite_loop.zip
+unzip -o 2117_infinite_loop.zip
+cp -r 2117_infinite_loop/* /var/www/html/
+systemctl restart apache2
+
+
+2. vars.tf *********
+
+variable "region" {
+  default = "us-east-1"
+}
+
+variable "zone" {
+  default = "us-east-1a"
+}
+
+variable "webuser" {           
+  default = "ubuntu"         
+}
+
+variable amiID {
+    type = map
+    default = { 
+        us-east-2 = "ami-0354545454545"
+        us-east-1 = "ami-0548495849584"
+    }
+}
+
+3. Instance.tf ***********
+
+resource "aws_instance" "web" {
+  ami                    = var.amiID[var.region] ###here
+  instance_type          = "t2.micro" 
+  key_name               = "dove-key"
+  vpc_security_group_ids = [aws_security_group.dove-sg.id]
+  availability_zone      = var.zone ###here
+  tags = {
+    Name    = "Dove-Web"
+    Project = "Dove"
+  }
+
+  provisioner "file" {
+    source = "web.sh"  # local path
+    destination = "/tmp/web.sh" # Server Path to pus the file
+  }
+
+  connection { 
+    type = "ssh"
+    user = var.webuser
+    private_key = file("/c/Users/vunet/.ssh/id_ed25519")
+    host = self.public_ip
+  }
+  
+  provisioner "remote-exec" {
+
+    inline = [
+      "chmod +x /tmp/web.sh",
+      "sudo /tmp/web.sh"
+    ]
+  }
+}
+
+  
+resource "aws_ec2_instance_state" "server-state" {
+  instance_id = aws_instance.web.id
+  state       = "running"
+}
+
+
+NOTE: INCLUDE ALL THE .tf Files which are required to apply the configuration I just copied the script for my reference
+
+************************ Output Information *******************
+
+1. Terraform stores returned value of all resourced created
+   eg aws_instance resource has the attribute public_ip
+2. Use output block to print these activities 
+3. Local-exec to save info to a file 
+
+***Output attributes:
+
+Output "instance_ip_addr"{ 
+   value = aws_instance.server.public_ip
+}
+
+Elements => resourceType.resourceName.attributeName
+			
+			   resourceType => aws_instance
+			   resourceName => server
+			   attributeName => public_ip
+			   
+
+***Store Output in File 
+
+resorce "aws_instance" "out_inst" { 
+  ami = var.AMIS[var.REGION]
+  instance_type = "t2.micro"
+  key_name = aws_key_pair.dino-key.key_name 
+
+provisioner "local-exec" { 
+  command = "echo aws_instance.out_inst.private_ip" >> privte_ips.txt  
+  
+  
+********************* Terraform Backend ************************
+
+1. To store terraform.tfstate in the aws s3 bucket(can be done in multiple ways) so all the team member can access this instead of keeping this in local 
+
+backend.tf **************
+
+terraform {
+  backend "s3" {
+    bucket = "terrformstate1212" #bucketname
+    key =   "terraform/backend" #folder name and anything u want 
+    region = "us-east-1" #aws region
+  }
+}
+
+
+
+================= To access inernet ========================  
+
+vpc.tf***********
+
+# Create VPC
+resource "aws_vpc" "main" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = "main-vpc"
+  }
+}
+
+# Create Internet Gateway
+resource "aws_internet_gateway" "gw" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "main-gw"
+  }
+}
+
+# Create Subnet
+resource "aws_subnet" "main_subnet" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.1.0/24"
+  map_public_ip_on_launch = true
+  availability_zone       = var.zone
+
+  tags = {
+    Name = "main-subnet"
+  }
+}
+
+# Create Route Table
+resource "aws_route_table" "main_rt" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.gw.id
+  }
+
+  tags = {
+    Name = "main-rt"
+  }
+}
+
+# Associate Route Table with Subnet
+resource "aws_route_table_association" "main_assoc" {
+  subnet_id      = aws_subnet.main_subnet.id
+  route_table_id = aws_route_table.main_rt.id
+}
+
+
+Instance.tf (subnet id is add to allocate IP inside the vpc)**************************
+
+resource "aws_instance" "control" {
+  ami                    = var.amiID[var.region]
+  instance_type          = "t2.micro"
+  key_name               = "dove-key"
+  subnet_id              = aws_subnet.main_subnet.id   
+  vpc_security_group_ids = [aws_security_group.dove-sg2.id]
+  availability_zone      = var.zone
+  tags = {
+    Name    = "control-server"
+    Project = "Ansible"
+  }
+}
+
+resource "aws_instance" "webserver-1" {
+  ami                    = var.centosAMI[var.region]
+  instance_type          = "t2.micro"
+  key_name               = "dove-key"
+  subnet_id              = aws_subnet.main_subnet.id   
+  vpc_security_group_ids = [aws_security_group.dove-sg2.id]
+  availability_zone      = var.zone
+  tags = {
+    Name    = "Web-Server-1"
+    Project = "Ansible"
+  }
+}
+
+resource "aws_instance" "webserver-2" {
+  ami                    = var.centosAMI[var.region]
+  instance_type          = "t2.micro"
+  key_name               = "dove-key"
+  subnet_id              = aws_subnet.main_subnet.id   
+  vpc_security_group_ids = [aws_security_group.dove-sg2.id]
+  availability_zone      = var.zone
+  tags = {
+    Name    = "Web-Server-2"
+    Project = "Ansible"
+  }
+}
+
+resource "aws_instance" "dbserver" {
+  ami                    = var.centosAMI[var.region]
+  instance_type          = "t2.micro"
+  key_name               = "dove-key"
+  subnet_id              = aws_subnet.main_subnet.id   
+  vpc_security_group_ids = [aws_security_group.dove-sg2.id]
+  availability_zone      = var.zone
+  tags = {
+    Name    = "dbserver"
+    Project = "Ansible"
+  }
+}
+
+resource "aws_ec2_instance_state" "server-state-1" {
+  instance_id = aws_instance.control.id
+  state       = "running"
+}
+
+resource "aws_ec2_instance_state" "server-state-2" {
+  instance_id = aws_instance.webserver-1.id
+  state       = "running"
+}
+
+resource "aws_ec2_instance_state" "server-state-3" {
+  instance_id = aws_instance.webserver-2.id
+  state       = "running"
+}
+
+resource "aws_ec2_instance_state" "server-state-4" {
+  instance_id = aws_instance.dbserver.id
+  state       = "running"
+}
+****************
+How Internet Works in Terraform Setup
+1. VPC (Virtual Private Cloud)
+Acts like your own private network inside AWS.
+
+CIDR block 10.0.0.0/16 gives you 65,536 IPs to use.
+
+2. Subnet
+A smaller section of your VPC. We used 10.0.1.0/24 which gives us 256 IPs.
+
+map_public_ip_on_launch = true: This gives instances a public IP so they can talk to the internet.
+
+3. Internet Gateway
+Like a door for your VPC to reach the internet.
+
+You must attach this gateway to your VPC.
+
+4. Route Table
+Tells your instances how to reach the internet.
+
+The rule: 0.0.0.0/0 --> Internet Gateway, means send all traffic to the internet.
+
+5. Route Table Association
+You need to connect the route table to your subnet. Without this, the subnet won't know where to send internet traffic.
+
+🔗 Summary: For internet access, you need:
+VPC ✅
+
+Subnet with public IP ✅
+
+Internet Gateway ✅
+
+Route Table with 0.0.0.0/0 → IGW ✅
+
+Associate Route Table to Subnet ✅
+
+Security Group allowing outbound traffic ✅ -> by default aws allow access to public IP and internet this has be taken care when creating the instance with aws
+resource "aws_vpc_security_group_egress_rule" "allow_all_outbound" {
+  security_group_id = aws_security_group.your_sg.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1" # all protocols
+}
+
+
+
+

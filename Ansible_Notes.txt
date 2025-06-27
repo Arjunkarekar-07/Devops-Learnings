@@ -1,0 +1,559 @@
+pull based v/s push based:
+Ansible         puppets,Terraform
+
+Defualt Inventory Directory -> /etc/ansible/hosts
+
+Custom Inventory-> (Setup: 1 Main server and 3 target server)
+pwd (/home/vunet/vprofile)-> inventory , client.pem (chmod 400)
+
+
+How to disable host key checking since it asks fingerprint everytime : /etc/ansible/ansible.cfg -> host_key_checking=False
+
+vi inventory: 
+all:
+  hosts:
+    web01:
+      ansible_host: 10.0.1.118
+      ansible_user: ec2-user
+      ansible_ssh_private_key_file: client.pem  # (it should be in the current dir)
+    web02:
+      ansible_host: 10.0.1.99
+      ansible_user: ec2-user
+      ansible_ssh_private_key_file: client.pem  # (it should be in the current dir)
+    db01:
+      ansible_host: 10.0.1.240
+      ansible_user: ec2-user
+      ansible_ssh_private_key_file: client.pem  # (it should be in the current dir)
+
+  children:
+    webservers:  # Group 1
+      hosts:
+        web01:
+        web02:
+    dbservers:  # Group 2
+      hosts:
+        db01:
+    dc_oregon:  # Group 3
+      children:
+        webservers:
+        dbservers:
+
+	
+$ ansible web01 -m ping -i inventory
+$ ansible all -m ping -i inventory
+$ ansible webservers -m ping -i inventory
+---> you will get success if all these things goes rights
+
+============= VARIABLES ====================
+variable has the top prority 
+
+	 
+
+============Ansible Terms========================================
+
+1.Controller Machine: where the Ansible is intalled and has the provsion to maintain other nodes.
+2.Inventory: An initilization file where information about other nodes are present.
+3.Playbook: where the automation is defined through tasks using YAML Files.
+4.Task: block that defines single procedure to executed eg. Install a Package.
+5.Module: It abstracts a system task, like dealing with packages or creating and changing files.
+6.Role: A pre-defined way for organizing playbooks and other files in order to facililate sharing and reusing portions of a provisioning.
+7.Play: Execution of a playbook is called play.
+8.Facts: Global variables containing information about the system,like network interface or operating system.
+9.Handlers: Triggger a service status changes, like restart ot stop a service.
+ 
+
+===========Modules==============================================
+ 
+System -> cron,iptable,hostname,mount etc
+Commands -> chdir,cmd,removes,stdin,creates
+Files -> acl,achieve,copy,File,Replace
+Databse -> mysql_db,users
+cloud
+widows and more
+
+Ansible AD-HOC Commands
+To ping to the host: ansible all -m ping -k(with passcode)
+To view mem: ansible all -m shell -a 'free -m'
+To create files: ansible all -m shell -a "touch /home/vunet/arjun.txt" -k(optional)(-m modules)
+changing file ownership: ansible all -m file -a "dest=/home/vunet/arjun.txt mode=700"(-a arguements can m=be multiple)
+ansible all -m shell -a "ls -ltr /home/vunet/ | grep arjun" (shell for output in terminal)
+ansible all -b -m file -a "dest=/home/vunet/arjun.txt mode=777 owner=root group=root" (-b temporary root)
+ansible all -b -m file -a "dest=/home/vunet/arjun state=directory" -k
+
+
+======To run a playbook:================= 
+ansible playbook <playbook name> 
+
+=======To run the playbook in background================
+nohup ansible-playbook docker_service_check_async.yaml > ansible_output.log 2>&1 &
+
+nohup: Runs the command in the background and ignores hangup (HUP) signals, so it continues to run even if the terminal is closed.
+>: Redirects standard output to a file (ansible_output.log in this case).
+2>&1: Redirects standard error to the same file as standard output.
+&: Runs the command in the background.
+
+
+==========Cron Job for running Playbook -> run_ansible.sh===============
+#!/bin/bash
+
+cd /path/to/your/playbook
+ansible-playbook docker_service_check_async.yaml >> ansible_output.log 2>&1
+*/5 * * * * /path/to/your/script/run_ansible.sh
+
+To Remove the entire cron-Job -> cronjob -r 
+To view the existing cron-Jov -> cronjob -l
+==========================================================================
+chmod +x run_ansible.sh
+crontab -e
+/var/log/syslog or /var/log/cron -> for logs
+==================================================
+---
+- name: Check Docker Service Status
+  hosts: localhost
+  gather_facts: False
+  tasks:
+    - name: Run docker service ls command asynchronously
+      shell: docker service ls --format "{{ '{{' }}.Name{{ '}}' }}:{{ '{{' }}.Replicas{{ '}}' }}"
+      register: docker_service_result
+      async: 300
+      poll: 5
+
+    - name: Print async status
+      async_status:
+        jid: "{{ docker_service_result.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
+      retries: 300
+      delay: 5
+
+    - name: Display Docker service status
+      debug:
+        msg: "Service {{ item.split(':')[0] }} is {{ 'running' if item.split(':')[1] == '1/1' else 'not running' }}"
+      loop: "{{ docker_service_result.stdout_lines.results }}"
+
+====================================================
+Above playbook will give job-id 
+ansible-playbook docker_service_check_async.yaml
+ansible localhost -m async_status -a "jid=<ansible_job_id>" 
+By using the async_status module, you can check the progress and results of the background task while it's running. Adjust the playbook and monitoring parameters based on your specific needs
+==================================================================
+===========Async playbook ========
+
+
+- name: Check Docker Service Status and Run Script
+  hosts: 164.52.200.58
+  gather_facts: False
+  tasks:
+    - name: Run docker service ls command asynchronously
+      shell: docker service ls --format "{{ '{{' }}.Name{{ '}}' }}:{{ '{{' }}.Replicas{{ '}}' }}"
+      register: docker_service_result
+      async: 300
+      poll: 5
+
+    - name: Print async status
+      async_status:
+        jid: "{{ docker_service_result.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
+      retries: 300
+      delay: 5
+
+    - name: Check Docker service status and run script if not running
+      shell: |
+        container_status="{{ docker_service_result.stdout_lines.results[0].item.split(':')[1] }}"
+        container_name="{{ docker_service_result.stdout_lines.results[0].item.split(':')[0] }}"
+        if [[ "{{ container_name }}" == "enrichment-preprocessor" && "{{ container_status }}" == "0/1" ]]; then
+          ./create-stream-v1.sh deployment-configs/{{ container_name }}.sh
+        fi
+      args:
+        executable: /bin/bash
+      when: docker_service_result.stdout_lines.results[0].finished
+      become: true
+      become_user: vunet
+
+    - name: Display Docker service status
+      debug:
+        msg: "Service {{ item.split(':')[0] }} is {{ 'running' if item.split(':')[1] == '1/1' else 'not running' }}"
+      loop: "{{ docker_service_result.stdout_lines.results }}"
+
+
+===============================================================================================================================
+
+---
+- name: Check Docker Service Status and Run Script
+  hosts: 164.52.200.58
+  gather_facts: False
+  tasks:
+    - name: Run docker service ls command
+      shell: docker service ls --format "{{ '{{' }}.Name{{ '}}' }}:{{ '{{' }}.Replicas{{ '}}' }}"
+      register: docker_service_result
+
+    - name: Display Docker service status and run script if not running
+      block:
+        - name: Display Docker service status
+          debug:
+            msg: "Service {{ item.split(':')[0] }} is {{ 'running' if item.split(':')[1] == '1/1' else 'not running' }}"
+          loop: "{{ docker_service_result.stdout_lines }}"
+
+        - name: Check Docker service status and run script if not running
+          shell: |
+            container_name = "{{ item.split(':')[0] }}"
+            container_status = "{{ item.split(':')[1] }}"
+            if [[ "{{ container_name }}" == "enrichment-preprocessor" && "{{ container_status }}" == "0/1" ]]; then
+              ./create-stream-v1.sh deployment-configs/{{ container_name }}.sh
+            fi
+          args:
+            executable: /bin/bash
+          with_items: "{{ docker_service_result.stdout_lines }}"
+          when: "'enrichment-preprocessor:0/1' in item"
+          become: true
+          become_user: vunet
+
+=================================================================================================================================
+
+---
+- name: Check Docker Service Status and Run Script
+  hosts: 164.52.200.58
+  gather_facts: False
+  tasks:
+    - name: Run docker service ls command
+      shell: docker service ls --format "{{ '{{' }}.Name{{ '}}' }}:{{ '{{' }}.Replicas{{ '}}' }}"
+      register: docker_service_result
+
+    - name: Display Docker service status and run script if not running
+      block:
+        - name: Display Docker service status
+          debug:
+            msg: "Service {{ item.split(':')[0] }} is {{ 'running' if item.split(':')[1] == '1/1' else 'not running' }}"
+          loop: "{{ docker_service_result.stdout_lines }}"
+
+        - name: Check Docker service status and run script if not running
+          shell: |
+            container_name="{{ item.split(':')[0] }}"
+            container_status="{{ item.split(':')[1] }}"
+
+            script_path="/data/vusmartmaps/bin/kafka-streams/create-stream-v1.sh"
+            deployment_path="/data/vusmartmaps/bin/kafka-streams/deployment-configs/"
+
+            if [[ "$container_status" == "0/1" ]]; then
+              "$script_path" "$deployment_path"/"$container_name".sh
+            fi
+          args:
+            executable: /bin/bash
+          with_items: "{{ docker_service_result.stdout_lines }}"
+          become: true
+          become_user: vunet
+
+---------------------------------------------------------------------------------
+---
+- name: Restart or Delete Kafka Connect Connectors if FAILED
+  hosts: 164.52.200.58
+  become: yes
+  tasks:
+    - name: Get list of running Kafka Connect connectors
+      command: "curl -s -X GET http://localhost:9082/connectors"
+      register: connector_names
+
+    - name: Identify connectors in FAILED state
+      command: "curl -s -X GET http://localhost:9082/connectors/{{ item }}/status | jq -r '[.tasks[]? | select(.state == \"FAILED\").name] | length > 0 // empty' "
+      register: failed_connectors
+      failed_when: false
+      with_items: "{{ connector_names.stdout | from_json }}"
+
+    - name: Debug Failed Connectors
+      ansible.builtin.debug:
+        var: failed_connectors.results | map(attribute='stdout') | list
+
+    # Add your tasks to delete or restart connectors based on the failed state
+
+-----------------------------------------------------------------------------------
+---
+- name: Restart or Delete Kafka Connect Connectors if FAILED
+  hosts:  164.52.200.58
+  become: yes
+  tasks:
+    - name: Get list of running Kafka Connect connectors
+      command: "curl -s -X GET http://localhost:9082/connectors | jq"
+      register: connector_names
+
+    - name: Identify connectors in FAILED state
+      command: "curl -s -X GET http://localhost:9082/connectors/{{ item }}/status | jq -r '.tasks[] | select(.state == \"FAILED\").state' "
+      register: connector_state
+      failed_when: "connector_state.stdout == 'FAILED'"
+      with_items: "{{ connector_names.stdout | from_json }}"
+
+    - name: Delete connectors in FAILED state
+      command: "curl -X DELETE http://localhost:9082/connectors/{{ item }}"
+      with_items: "{{ connector_state.results | selectattr('stdout', 'equalto', 'FAILED') | map(attribute='item') | list }}"
+      when: connector_state.results | selectattr('stdout', 'equalto', 'FAILED') | list | count > 0
+
+    - name: Change directory to the connector script location
+      ansible.builtin.command: 
+        cmd: "cd /data/vusmartmaps/bin/kafka-connect/sink-connectors/"
+      when: connector_names.stdout | from_json | length > 0
+
+    - name: Run bash script for connectors
+      ansible.builtin.command: 
+        cmd: "bash {{ item }}.txt"
+      with_items: "{{ connector_state.results | selectattr('stdout', 'equalto', 'FAILED') | map(attribute='item') | list }}"
+      when: connector_names.stdout | from_json | length > 0
+
+--------------------------------------------------------------------------------------------------
+
+---
+- name: Check Docker Service Status and Run Script
+  hosts: 164.52.200.58
+  gather_facts: False
+  tasks:
+    - name: Run docker service ls command
+      shell: docker service ls --format "{{ '{{' }}.Name{{ '}}' }}:{{ '{{' }}.Replicas{{ '}}' }}"
+      register: docker_service_result
+
+    - name: Display Docker service status and run script if not running
+      block:
+        - name: Display Docker service status
+          debug:
+            msg: "Service {{ item.split(':')[0] }} is {{ 'running' if item.split(':')[1] == '1/1' else 'not running' }}"
+          loop: "{{ docker_service_result.stdout_lines }}"
+
+        - name: Check Docker service status and run script if not running
+          shell: |
+            container_name="{{ item.split(':')[0] }}"
+            container_status="{{ item.split(':')[1] | regex_replace('/.*', '') }}"
+
+            script_path="/data/vusmartmaps/bin/kafka-streams/create-stream-v1.sh"
+            deployment_path="/data/vusmartmaps/bin/kafka-streams/deployment-configs/"
+
+            # Additional condition to check the container name
+            if [[ "$container_status" == "0" && ! ( "$container_name" == 'vsmaps_alert-1' || "$container_name" == 'vsmaps_broker-1' || "$container_name" == 'vsmaps_connect-1' || "$container_name" == 'vsmaps_dao' || "$container_name" == 'vsmaps_elasticsearch-1' || "$container_name" == 'vsmaps_elasticsearch-2' || "$container_name" == 'vsmaps_elasticsearch-3' || "$container_name" == 'vsmaps_heartbeat-1-1-1' || "$container_name" == 'vsmaps_ksqldb-cli' || "$container_name" == 'vsmaps_ksqldb-server' || "$container_name" == 'vsmaps_mysql-1' || "$container_name" == 'vsmaps_orchestration' || "$container_name" == 'vsmaps_route' || "$container_name" == 'vsmaps_vuinterface-1' || "$container_name" == 'vsmaps_zookeeper-1' || "$container_name" == 'vusmartmaps-application' ) ]]; then
+              "$script_path" "$deployment_path"/"$container_name".sh
+            fi
+          args:
+            executable: /bin/bash
+          with_items: "{{ docker_service_result.stdout_lines }}"
+          become: true
+          become_user: vunet
+
+---------------------------------------------------------------------------------------------------------
+---
+- name: Restart or Delete Kafka Connect Connectors if FAILED
+  hosts:  164.52.200.58
+  become: yes
+  tasks:
+    - name: Get list of running Kafka Connect connectors
+      command: "curl -s -X GET http://localhost:9082/connectors | jq"
+      register: connector_names
+
+    - name: Identify connectors in FAILED state
+      command: "curl -s -X GET http://localhost:9082/connectors/{{ item }}/status | jq -r '.tasks[] | select(.state == \"FAILED\").state' "
+      register: connector_state
+      failed_when: "connector_state.stdout == 'FAILED'"
+      with_items: "{{ connector_names.stdout | from_json }}"		
+
+    - name: Delete connectors in FAILED state
+      command: "curl -X DELETE http://localhost:9082/connectors/{{ item }}"
+      with_items: "{{ connector_state.results | selectattr('stdout', 'equalto', 'FAILED') | map(attribute='item') | list }}"
+      when: connector_state.results | selectattr('stdout', 'equalto', 'FAILED') | list | count > 0
+
+    - name: Change directory to the connector script location
+      ansible.builtin.command: 
+        cmd: "cd /data/vusmartmaps/bin/kafka-connect/sink-connectors/"
+      when: connector_names.stdout | from_json | length > 0
+
+    - name: Run bash script for connectors
+      ansible.builtin.command: 
+        cmd: "bash {{ item }}.txt"
+      with_items: "{{ connector_state.results | selectattr('stdout', 'equalto', 'FAILED') | map(attribute='item') | list }}"
+      when: connector_names.stdout | from_json | length > 0
+
+========================================================================================================================
+---
+- name: Check Docker Service Status and Run Script
+  hosts: Analyzers
+  gather_facts: False
+  tasks:
+    - name: Run docker service ls command
+      shell: docker service ls --format "{{ '{{' }}.Name{{ '}}' }}:{{ '{{' }}.Replicas{{ '}}' }}"
+      register: docker_service_result
+
+    - name: Display Docker service status
+      debug:
+        msg: "Service {{ item.split(':')[0] }} is {{ 'running' if item.split(':')[1] == '1/1' else 'not running' }}"
+      loop: "{{ docker_service_result.stdout_lines }}"
+
+    - name: Check Docker service status and run script if not running
+      shell: |
+        container_name="{{ item.split(':')[0] }}"
+        container_status="{{ item.split(':')[1] | regex_replace('/.*', '') }}"  # Extract only the first part of the status (before "/")
+
+        script_path="/data/vusmartmaps/bin/kafka-streams/create-stream-v1.sh"
+        deployment_path="/data/vusmartmaps/bin/kafka-streams/deployment-configs/"
+        log_file_path="/home/vunet/ansible_log.txt"
+
+        # Restricted container names
+        restricted_container_names:
+          - vsmaps_alert-1
+          - vsmaps_broker-1
+          - vsmaps_connect-1
+          - vsmaps_dao
+          - vsmaps_elasticsearch-1
+          - vsmaps_elasticsearch-2
+          - vsmaps_elasticsearch-3
+          - vsmaps_heartbeat-1-1-1
+          - vsmaps_ksqldb-cli
+          - vsmaps_ksqldb-server
+          - vsmaps_mysql-1
+          - vsmaps_orchestration
+          - vsmaps_route
+          - vsmaps_vuinterface-1
+          - vsmaps_zookeeper-1
+          - vusmartmaps-application
+
+        # Additional condition to check the container name
+        if [[ "$container_status" == "0" && ! ( "${restricted_container_names[@]}" =~ $container_name ) ]]; then
+            "{{ script_path }}" "{{ deployment_path }}/{{ container_name }}.sh"
+            echo "Adapter - $container_name has been restarted, Please take necessary actions!!!" | mail -s "Adapter Restart Notification!!!!" arjun@vunetsystems.com arjunkarekar1002@gmail.com
+        fi
+      args:
+        executable: /bin/bash
+      loop: "{{ docker_service_result.stdout_lines }}"
+      when: "'not running' in item.stdout"
+      become: true
+      become_user: vunet-prod
+========================================================================================================================
+---
+- name: Check Docker Service Status and Run Script
+  hosts: Analyzers
+  gather_facts: False
+  tasks:
+    - name: Run docker service ls command
+      shell: docker service ls --format "{{ '{{' }}.Name{{ '}}' }}:{{ '{{' }}.Replicas{{ '}}' }}"
+      register: docker_service_result
+
+    - name: Display Docker service status
+      debug:
+        msg: "Service {{ item.split(':')[0] }} is {{ 'running' if item.split(':')[1] == '1/1' else 'not running' }}"
+      loop: "{{ docker_service_result.stdout_lines }}"
+
+    - name: Check Docker service status and run script if not running
+      shell: |
+        container_name="{{ item.split(':')[0] }}"
+        container_status="{{ item.split(':')[1] | regex_replace('/.*', '') }}"  # Extract only the first part of the status (before "/")
+
+        script_path="/data/vusmartmaps/bin/kafka-streams/create-stream-v1.sh"
+        deployment_path="/data/vusmartmaps/bin/kafka-streams/deployment-configs/"
+        log_file_path="/home/vunet/ansible_log.txt"
+
+        # Restricted container names
+        restricted_container_names:
+          - vsmaps_alert-1
+          - vsmaps_broker-1
+          - vsmaps_connect-1
+          - vsmaps_dao
+          - vsmaps_elasticsearch-1
+          - vsmaps_elasticsearch-2
+          - vsmaps_elasticsearch-3
+          - vsmaps_heartbeat-1-1-1
+          - vsmaps_ksqldb-cli
+          - vsmaps_ksqldb-server
+          - vsmaps_mysql-1
+          - vsmaps_orchestration
+          - vsmaps_route
+          - vsmaps_vuinterface-1
+          - vsmaps_zookeeper-1
+          - vusmartmaps-application
+
+        # Additional condition to check the container name
+        if [[ "$container_status" == "0" && ! ( "${restricted_container_names[@]}" =~ $container_name ) ]]; then
+            "{{ script_path }}" "{{ deployment_path }}/{{ container_name }}.sh"
+            echo "Adapter - $container_name has been restarted, Please take necessary actions!!!" | mail -s "Adapter Restart Notification!!!!" arjun@vunetsystems.com arjunkarekar1002@gmail.com
+        fi
+      args:
+        executable: /bin/bash
+      loop: "{{ docker_service_result.stdout_lines }}"
+      when: "'not running' in item.stdout"
+      become: true
+      become_user: vunet-prod
+
+===========================================================
+
+---
+- name: Get and filter connector state
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Get connector status
+      uri:
+        url: "http://localhost:9082/connectors/onemoney-es-sink/status"  # Update with the actual connector name
+        method: GET
+      register: connector_status
+
+    - name: Extract connector name for connectors with state "FAILED"
+      set_fact:
+        failed_connector_name: "{{ connector_status.json.name }}"
+      when: connector_status.json.tasks | selectattr('state', 'equalto', 'FAILED') | list | length > 0
+
+    - name: Print the connector name for the failed connector
+      debug:
+        var: failed_connector_name
+
+=========================================================================
+---
+- name: Restart or Delete Kafka Connect Connectors if FAILED
+  hosts: 164.52.200.58
+  become: yes
+  tasks:
+    - name: Get list of running Kafka Connect connectors
+      command: "curl -s -X GET http://localhost:9082/connectors | jq"
+      register: connector_names
+      failed_when: false
+
+    - name: Print list of connectors
+      debug:
+        var: connector_names.stdout_lines
+
+    - name: Identify connectors in FAILED state
+      command: "curl -s -X GET http://localhost:9082/connectors/{{ item }}/status | jq -r '.tasks[] | select(.state == \"FAILED\") | .id, .state' "
+      register: connector_state
+      failed_when: false
+      with_items: "{{ connector_names.stdout | from_json }}"
+      ignore_errors: yes
+
+    - name: Print debug information
+      debug:
+        var: connector_state
+
+    - name: Print failed connectors
+      debug:
+        var: connector_state.stdout_lines
+      when: connector_state.stdout_lines | length > 0
+
+    - name: Delete connectors in FAILED state
+      command: "curl -X DELETE http://localhost:9082/connectors/{{ item }}"
+      with_items: "{{ connector_state.results | map(attribute='item') | list }}"
+      when: connector_state.stdout_lines | length > 0
+
+    - name: Change directory to the connector script location
+      command:
+        cmd: "cd /data/vusmartmaps/bin/kafka-connect/sink-connectors/"
+      when: connector_names.stdout | from_json | length > 0
+
+    - name: Run bash script for connectors
+      command:
+        cmd: "bash {{ item }}.txt"
+      with_items: "{{ connector_state.results | map(attribute='item') | list }}"
+      when: connector_names.stdout | from_json | length > 0
+
+======================================================
+    - name: Send Email for Memory Excess
+      shell: |
+        free_memory="{{ free_memory | replace('Gi','') | replace('Mi','') | float }}"
+        threshold=3
+        if [ $(echo "$free_memory > $threshold" | bc) -eq 1 ]; then
+          echo "Excess memory usage alert" | mail -s "Available memory is $free_memory. Take action!!" arjun@vunetsystems.com
+        else
+          echo "Memory threshold not met. No email sent."
+        fi
+      ignore_errors: true
+
+

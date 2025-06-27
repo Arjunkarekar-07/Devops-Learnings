@@ -1,0 +1,4223 @@
+Why Kubernetes:
+1. Automatic deployment of the containerized applications across different servers
+2. Distributions of the load across multiple servers
+3. Auto scaling of the deployed applications 
+4. Monitoring and health check of the containers
+5. Replacement of the failed containers
+ 
+
+It supports multiple container runtimes:
+1. Docker 
+2. CRI-O 
+4. Containerd0
+
+Docker v/s Kubernetes 
+1. We can run only one instance of an application in docker 
+2. With Kubernetes we can run 1000 instance of the same application 
+3. Can update in rolling 
+4. Can help in testing the updated 
+5. We can define the expected state of an application so that it ensures that it comes back to declarative state 
+6. We can run enterpise level apps due to its auto scaling, replicas, auto healing, firewall, load balanacer (Basic Load balancing - which uses round robbin algo)
+
+
+✅ Default Container Runtimes in Cloud Kubernetes Providers (2024–2025)
+| Cloud Provider      | Kubernetes Service | Default Container Runtime |
+| ------------------- | ------------------ | ------------------------- |
+| **AWS**             | EKS                | `containerd`              |
+| **Google Cloud**    | GKE                | `containerd`              |
+| **Azure**           | AKS                | `containerd`              |
+| **Azure OpenShift** | ARO / OCP          | `CRI-O`                   |
+| **DigitalOcean**    | DOKS               | `containerd`              |
+| **IBM Cloud**       | IKS                | `containerd`              |
+| **Self-hosted OCP** | OpenShift          | `CRI-O`                   |
+
+$kubectl describe node nodeName -- To view node status and containerRuntime 
+
+
+============== Kubectl playground =========================
+https://killercoda.com/kubernetes/scenario/playground
+===========================================================
+
+
+=================== Kuberneted Architecture ================
+
+     Control plane   (Master)          |               Data plane (Worker)
+	   api server								           kubelet
+	   etcd										           proxy
+	   scheduler 								           container runtime
+	   control manager
+	   cloud controller manager
+	   
+	   
+Running a container in docker -> Only container runtime (Dockershim)
+In kubernetes 2 things come into play master and worker below is the explanation how things work inside it 
+
+************* Worker Node OR DATA PLANE SIDE *************
+
+Any Request made will go through master node and then workers
+
+
+1. Container Runtime -> Provides support to use different container platforms to run container, unlike docker
+
+2. Kubelet ->  is  reponsible for deploying a pod and keeping state of the pod is running and report it to with different container runtime (Dockershim,conatinerd,cri-o).
+
+In docker the network is managed by docker0 or defalut there is bridge network 
+
+3. Kubeproxy -> In kubernetes it uses kube-proxy to assign ip iddressess to the pod and provide load balancing (Networking)
+
+
+************** Master Node OR Control Plane ******************
+
+1. Kube-api-server ->  Is a component which exposes k8s which takes all the request from external world, Fronted for Kubernetes, all talk with kube-api-server. Heart of k8s.
+
+2. Kube-Scheduler ->  Is responsible pods or resources in k8s, who decides ? api-server who acts ? Scheduler
+
+3. etcd -> The cluster information is stored in etcd as key value. Is is an object store
+		
+4. Controller Manager -> for example To auto scaling actions that is replicasets controller is used so there so many components/controllers which will be managesd by controller manager. 
+
+There are differnt controllers: 
+i. Replication Controller -> Ensures the correct number of pods running in the cluster 
+ii. Node COntroller -> Monitors the health of each node and notifies the cluster when nodes are offline or online  
+iii. Endooint Controller -> Connect the services and pods to populate the endpoint object 
+
+These components takes the help of schedulers the shedule the pods
+
+5. Cloud Controller Manager -> Interaction with cloud service provided where we run our Kubernetes cluster. Kubernetes cluster services are provided by the cloud service providers (Aws, Azure, IBM)
+
+======================= Basics of pod ==============================
+
+A pod is the smmallest deployment (Wrapper) in the kubernetes. In a single pod we can run mulitlple containers the benefits of this is they can talk with localhost and it can be shared volumne/storage etc. All 
+The cluster Ip is assigned to each pod through kubeproxy and can access from pod ip adrressess
+
+
+Kubectl -> It used to interact with k8s cluster. it is the command line for k8s 
+
+
+
+===================== Minikube =================================
+*To play around with kunernetes a cluster is required which comes free with minikube 
+
+1.To Install Kubernetes cluster::
+minikube: Creates Kubernetes cluster with single node with master node and worker node
+In order to run minikube it requires VM or container manager 
+Ex: VirtualBox, VMwarre, docker, Hyper-V, parallels (Hyper-V : windows) (VirtualBox : linux)
+2. We can use docker container as well to use Minikube then inside the container pods will be created 
+
+
+
+Node: A physical or VM where containers are deployed 
+
+When we install Kubernetes in any env the following things plays an important role
+
+Inside Nodes => pods => containers
+
+Master node manages the worker nodes all the worker nodes and the master communicated when we run a kubectl command 
+
+Kubectl command communicates to kube-api-server through rest api's using https:protocol
+
+All the containers in the pods share the same namespaces like volumes, network ip 
+
+How to login into k8s cluster in minikube -> minikube ssh (Then you can curl to the app:port)
+======================== Master Node ==============================
+On the Controll plane: 
+1. Cluster: A set of nodes grouped together 
+2. Controll plane: Responsible for load balancing (Orchestration)
+3. kube-api-server: Fronted for Kubernetes, all talk with kube-api-server 
+4. etcd - distributed reliable key value store, All the information is stored here (logs)
+5. Controller-manager - The brain of the orchestration, decisions made by the manager when there any issues in the cluster. It controls everything.
+6. kube-scheduler - distributing work or containers across the nodes 
+This all comes under master node when Kubernetes is installed in any physical or VM 
+7. cloud controller manager: Interaction with cloud service provided where we run our Kubernetes cluster. Kubernetes cluster services are provided by the cloud service providers (Aws, Azure, IBM)
+
+======================== Control Node =============================
+On worker nodes: 
+kubelet -> agent that runs on each node, it make sure that all the containers are running fine in the node 
+kube-proxy- Help the worker node and the kubelet to communicate with each other (Networking Component)
+container-runtime -> helps in running the container (ex: Docker, containerd)
+
+==================kubectl command(cub control)=================
+To manage the Kubernetes cluster send the request to kube-api-server https:
+
+kubectl --version 
+kubectl --help 
+kubectl get nodes -> status of nodes 
+controlplane $ kubectl get nodes
+NAME           STATUS   ROLES           AGE   VERSION
+controlplane   Ready    control-plane   16d   v1.31.0
+kubectl delete pod pod_name
+
+================= Pod ==============
+Pod is single unit of an application 
+one pod may contain more than one container 
+If we want to scale an application we create more pods 
+
+
+If we put more than one containers in the single pod there are some advantages 
+they can through localhost (shared network, share the files) -> sidecar continers
+
+Ip addressess are assigned to pod not container which is assignes by kubeproxy 
+
+
+How to create a pod ? 
+$ kubect run nginx --image=nginx ---> create pod 
+pod/nginx created 
+
+$ kubectl run my-pod --image=nginx:alpine
+pod/my-pod created 
+
+$ kubectl get pods 
+NAME    READY   STATUS    RESTARTS   AGE
+nginx   1/1     Running   0          11m
+
+$ kubectl get services/svc
+
+$ kubectl get deployments 
+
+
+How to add Auto scaling and Auto healing ?? Deplyoment 
+
+Deployment -> Provides way to deploy your app 
+
+Differnece between container | pod | Deployment 
+
+docker run -i -p -v -network 
+yml manifest -> just providing running specification of pod
+Deployment -> 1. Auto healing, Auto Scaling (Zero time deployment)
+
+Do not create a just pod. create using deployemnt (which is a controller) -> Under this we define (Replicaset - 2)
+This will create a replicaset -> managed by controller
+Inisde this pods 
+
+So even if the user deletes the pod controller will make sure there will be 2 pods running 
+
+===================== Example of an deploy ===========
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+=====================================================
+
+
+$kubectl get deploy 
+$kubectl get rs 
+$kubectl describe deployments
+$kubectl rollout status deployment/nginx-deployment-arjun ---> deployment "nginx-deployment-arjun" successfully rolled out (Is used to monitor the status of a Deployment rollout in Kubernetes. It tells you whether a deployment is successfully rolling out (updating pods), or if it's stuck or failed.)
+$kubectl rollout history deployment/nginx-deployment-arjun
+deployment.apps/nginx-deployment-arjun
+REVISION  CHANGE-CAUSE
+1         <none>
+
+=================== Service ==========================
+
+Why do we need to a servce in kubernetes 
+
+What if there is not concept of Service?? 
+-> developer will deploy a pod and replicaset -> when the pod goes down and again when it comens up the ip addresses will changes so inorder to not face this problem we need to use service (LoadBalancing)
+
+Advantages :
+1. LoadBalanding -> So on top of deployemnt create service which acts a load balancer 
+So the end users will access this load balancer (By kube-proxy)
+
+2. Service Discovery -> Service itself may face the same problem trackling down the IP Adressess so it will use labels and selectors so this label will be same to the pods.
+
+Machanism -> Deplpyemnt -> inside metadeta create label -> replicaset (2) -> for the both the pods the label will be same so service can handle to the traffic which is coming to the pod irrespective of the ip changes it can handle the requests
+
+3. Expose app to the external world -> The pod which are created by deployment are exposed outside the k8s cluster 
+
+We can create a service of 3 types :
+1. Cluster IP -> Access only inside the k8s cluster (Discovery and load balancing)
+2. NodePort -> Access to the network (like access to the worker nodes to an organization: for example nodeIp:port)
+3. LoadBalancer -> Access to external world (ELB-> end users should access through public ip address) -> through Cloud providers (Cloud Cloud manager)
+
+================= Created a real time docker file for python app and used deployment to deploy it ==================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-deployment
+  labels:
+    app: django-python-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: django-python-app
+  template:
+    metadata:
+      labels:
+        app: django-python-app
+    spec:
+      containers:
+      - name: python-app
+        image: arjunkarekar/python-django-app:latest
+        ports:
+        - containerPort: 8000
+
+kubectl get pods -o wide --show-labels -v=9
+minikube ssh 
+curl -L (To follow redirects) http://10.....:8000/demo
+
+
+======================== Nodeport Service & LoadBalancer ================================== 
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: python-app-django-service
+spec:
+  type: NodePort --> Loadbalancer(Then it will be a load balancer service if this is used in Cloud service then only it will work)
+  selector:
+    app : django-python-app
+  ports:
+    - port: 80
+      targetPort: 8000
+      nodePort: 30007
+
+minikube ip -> 192.168.49.2
+curl -L http://192.168.49.2:30007/demo
+
+Changing to LoadBalancer :: 
+
+NAME                        TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+kubernetes                  ClusterIP      10.96.0.1       <none>        443/TCP        13d
+python-app-django-service   LoadBalancer   10.96.234.105   <pending>     80:30007/TCP   8m9s
+
+Note: if you change the label selector and try to access the url it will not work because service discovery happens through labels 
+
+
+
+================================= INGRESS(LoadBalancer) =================================
+Why Ingress??
+
+Problems while using the above services which were missing 
+1. Enterprise and TLS Capabilities (HTTPS,STICKY,PATH BASED,HOST BASED, Ratio based Laodbalancing)
+2. if you are creating a service of type loadbalacer and suppose we need to expose 1000 application the cloud providers were charging more because statis ip adress get attached to this
+
+So they developed ingress challenging the advantages provider by enterprise level lB(Nginx, f5, traeffic, Ha Proxy), so implementing all the loadbalancer was challenging
+So create resource called ingress controller and you set the same thing in yaml 
+
+
+Architecture:																						
+
+User ->  will create ingress resource (so user should Deplpoy Ingress controller)				|					LoadBalancer Companies -> will create thier own ingress controller and deploy this on github and provider steps to integrate this ingress controller to the end users 
+						
+						
+1. Without security and load balancing no one was willing to shift to k8s 
+2. create ingress resource by having ingress controller (Loadbalancer)
+
+FLOW DIAGRAM OF HOW INGRESS sends all its traffic to one Service 
+														
+														K8s CLUSTER 
+																				|-----Pod
+Client -> Ingress Managed Load Balancer --->  Ingress ----routing rule--> Service
+																				|------Pod
+
+And add a ingress resouce for example:
+===================================================
+HOST BASED ROUTING - Using Nginx Ingress controller
+===================================================
+Ingress-Nginx.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-example
+spec:
+  rules:
+  - host: "foo.bar.com"
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/bar"
+        backend:
+          service:
+            name: python-app-django-service
+            port:
+              number: 8000
+			  
+minikube@e2e-81-105:~/python-app$ curl -L http://foo.bar.com/bar -v
+* Could not resolve host: foo.bar.com
+* Closing connection 0
+curl: (6) Could not resolve host: foo.bar.com
+
+To solve this you need to install the ingress controller
+Search for the ingress controller you need and u will find the steps to install through helm 
+In minikube -> 
+$minikube addons enable ingress 
+$kubectl get pods -n ingress-nginx
+--- This will list the ingress controller pods under the namespace ingress-nginx 
+
+minikube@e2e-81-105:~/python-app$ kubectl get ingress
+NAME              CLASS   HOSTS         ADDRESS        PORTS   AGE
+ingress-example   nginx   foo.bar.com   192.168.49.2   80      7m46s
+
+
+After this install the Ingress nginx Controller will identify your ingress resouce: 
+
+minikube@e2e-81-105:~/python-app$ kubectl logs -f --tail 10 ingress-nginx-controller-56d7c84fd4-hjjzw -n ingress-nginx
+I0526 18:06:14.349610       6 nginx.go:337] "Starting validation webhook" address=":8443" certPath="/usr/local/certificates/cert" keyPath="/usr/local/certificates/key"
+I0526 18:06:14.349785       6 controller.go:193] "Configuration changes detected, backend reload required"
+I0526 18:06:14.370466       6 leaderelection.go:268] successfully acquired lease ingress-nginx/ingress-nginx-leader
+I0526 18:06:14.370725       6 status.go:85] "New leader elected" identity="ingress-nginx-controller-56d7c84fd4-hjjzw"
+I0526 18:06:14.375049       6 status.go:219] "POD is not ready" pod="ingress-nginx/ingress-nginx-controller-56d7c84fd4-hjjzw" node="minikube"
+I0526 18:06:14.382246       6 controller.go:213] "Backend successfully reloaded"
+I0526 18:06:14.382344       6 controller.go:224] "Initial sync, sleeping for 1 second"
+I0526 18:06:14.382392       6 event.go:377] Event(v1.ObjectReference{Kind:"Pod", Namespace:"ingress-nginx", Name:"ingress-nginx-controller-56d7c84fd4-hjjzw", UID:"12afad91-51f1-49b1-bb02-d3b8fed7d657", APIVersion:"v1", ResourceVersion:"935631", FieldPath:""}): type: 'Normal' reason: 'RELOAD' NGINX reload triggered due to a change in configuration
+W0526 18:13:00.606367       6 controller.go:333] ignoring ingress ingress-example in default based on annotation : no object matching key "nginx-example" in local store
+I0526 18:13:00.606410       6 main.go:107] "successfully validated configuration, accepting" ingress="default/ingress-example"
+
+**************
+So now you can ping the foo.bar.com by editing the /etc/hosts/ file 
+192.168.49.2 foo.bar.com --> this hostname will resolve to minikube IP this is just for testing purpose usually in production we will ping the actual domain
+
+------------------------------------
+Notes from pavan elthepu
+------------------------------------
+
+======================PATH BASED ROUTING FOR TODO APPLICATION(spring and react) =====================
+Suppose if you have 2 services running in a  cluster 
+1. To do app built with react 
+2. To do app built with springboot
+
+Then we should expose these two services as loadbalacer so what if we have one loadbalacer that will route the request based on the path or host that's where ingress controller comes into picture 
+
+-> In Ingress we declare which request should got to which service 
+-> We'll write a ingress rule, That will have the info on how to route the requests to the desired service 
+-> Just decalaring ingress rules is not enough we need to define ingrss controller which will deploy as a pod which will keep watching this ingress rule to act on the cluster 
+-> So we dont have to deploy nodeport service because the ingress controller pod can the clusterIp hence we can define the apps as a cluster ip service
+
+Example: 
+
+                           +--------------------------+
+                           |      Your Browser        |
+                           |   http://todo.com/       |
+                           +-----------+--------------+
+                                       |
+                                       v
+                       +-----------------------------+
+                       |     Ingress Controller      |
+                       |  (e.g., NGINX Ingress Pod)  |
+                       +-------------+---------------+
+                                     |
+        +----------------------------+-----------------------------+
+        |                                                          |
+        v                                                          v
++-------------------------+                           +-------------------------+
+| Path: /                 |                           | Path: /api              |
+| → todo-ui-service       |                           | → todo-api-service      |
+| Port: 3001 → Pod: 80    |                           | Port: 8080 → Pod: 8082  |
++-------------------------+                           +-------------------------+
+        |                                                          |
+        v                                                          v
++------------------------+                              +------------------------+
+| React App (todo-ui)    |                              | Spring Boot API        |
+| Shows UI               |                              | Talks to MongoDB       |
++------------------------+                              +------------------------+
+
+
+Flow Example: UI Request to API
+Browser loads http://todo.com/
+
+Ingress forwards / to todo-ui-service → hits the React app.
+
+React app makes an API call to http://todo.com/api/todos
+
+Ingress sees /api → forwards to todo-api-service
+
+Spring Boot talks to MongoDB hosted on Atlas.
+					
+
+Ingress Rule: 
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: todo-ingress-path-based
+  namespace: todo # Note: Pls add the namespace otherwise this will be created in the default namespace
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+spec:
+  rules:
+    - host: todo.com
+      http:
+        paths:
+          - path: /(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: todo-ui-service
+                port:
+                  number: 3001
+          - path: /api/?(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: todo-api-service
+                port:
+                  number: 8080
+
+
+-> There are many third party ingress controllers like traefik, HAproxy, Istio etc 
+-> Nginx Ingress controller is managed by the ngix itelf 
+$minikube addons enable ingress 
+$kubectl get pods -n ingress-nginx
+minikube@e2e-81-105:~/python-app$ kubectl get svc -n ingress-nginx
+NAME                                 TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                      AGE
+ingress-nginx-controller             NodePort    10.109.166.167   <none>        80:32281/TCP,443:32696/TCP   14d
+ingress-nginx-controller-admission   ClusterIP   10.101.112.232   <none>        443/TCP                      14d
+
+Note: Since this is minikube setup NodePort service is created if this deployed in cloud it will create loadbalancer svc 
+
+Now the ingress controller is ready to process our ingress rule
+
+To know which apiversion to use run this command 
+$ kubectl api-resources  | grep Ingress 
+ingressclasses                                   networking.k8s.io/v1              false        IngressClass
+ingresses                           ing          networking.k8s.io/v1              true         Ingress
+
+Ingress Rule Matching Table: PathType 
+| Kind   | Path(s)                         | Request Path(s) | Matches?                                    |
+| ------ | ------------------------------- | --------------- | ------------------------------------------- |
+| Prefix | `/`                             | (all paths)     | Yes                                         |
+| Exact  | `/foo`                          | `/foo`          | Yes                                         |
+| Exact  | `/foo`                          | `/bar`          | No                                          |
+| Exact  | `/foo`                          | `/foo/`         | No                                          |
+| Exact  | `/foo/`                         | `/foo`          | No                                          |
+| Exact  | `/foo/`                         | `/foo/`         | Yes                                         |
+| Prefix | `/foo`                          | `/foo`, `/foo/` | Yes                                         |
+| Prefix | `/foo/`                         | `/foo`, `/foo/` | Yes                                         |
+| Prefix | `/aaa/bb`                       | `/aaa/bbb`      | Yes, ignores trailing slash                 |
+| Prefix | `/aaa/bbb`                      | `/aaa/bbb`      | Yes                                         |
+| Prefix | `/aaa/bbb`                      | `/aaa/bbb/`     | Yes, matches trailing slash                 |
+| Prefix | `/aaa/bbb`                      | `/aaa/bbb/ccc`  | Yes, matches subpath                        |
+| Prefix | `/aaa/bbb`                      | `/aaa/bbbyyz`   | No, does not match string prefix            |
+| Prefix | `/`, `/aaa`, `/aaa/bbb`         | `/aaa/bbb`      | Yes, matches `/aaa/bbb`                     |
+| Prefix | `/`, `/aaa`, `/aaa/bbb`         | `/aaa/bbb/ccc`  | Yes, matches `/aaa/bbb`                     |
+| Prefix | `/`, `/aaa`, `/aaa/bbb`         | `/ccc`          | Yes, matches `/` prefix                     |
+| Mixed  | `/foo` (Prefix), `/foo` (Exact) | `/foo`          | No, uses Exact backend, prefers Exact match |
+
+
+
+nginx-deployment.yaml
+-----------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  labels:
+    app: nginx
+spec:
+  type: ClusterIP
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 8082       # Port exposed by the service
+      targetPort: 90  # Port exposed by the nginx container
+	 
+nginx-service.yaml
+---------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  labels:
+    app: nginx
+spec:
+  type: ClusterIP
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 8082        # Port exposed by the service
+      targetPort: 80  # Port exposed by the nginx container
+
+nginx-ingress.yaml
+-----------------------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-ingress
+spec:
+  rules:
+    - host: nginx-demo.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-service
+                port:
+                  number: 8082
+				  
+				  
+minikube@e2e-81-105:~/ingress$ kubectl  get ing
+NAME              CLASS   HOSTS            ADDRESS        PORTS   AGE
+ingress-example   nginx   foo.bar.com      192.168.49.2   80      14d
+nginx-ingress     nginx   nginx-demo.com   192.168.49.2   80      23m
+
+Note: when you try to access the nginx-demo.com it will try to resolve to any ip so we need to add the domain in the /etc/hosts  
+$minikube ip -p ingress-cluster 
+192.168.49.2 
+$ sudo vi /etc/hosts 
+192.168.49.2 ngin-demo.com 
+
+Now the you can access the nginx welcome page 
+-----------------------------------------
+Deploying the todo Application
+-----------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-api
+  namespace: todo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: todo-api
+  template:
+    metadata:
+      name: todo-api-pod
+      labels:
+        app: todo-api
+    spec:
+      containers:
+        - name: todo-api
+          image: pavanelthepu/todo-api:1.0.2
+          ports:
+            - containerPort: 8082
+          env:
+            - name: "spring.data.mongodb.uri"
+              value: "mongodb://root:321654@cluster0.p9jq2.mongodb.net:27017/todo?retryWrites=true&w=majority"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: todo-api-service
+  namespace: todo
+spec:
+  selector:
+    app: todo-api
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+      targetPort: 8082
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-ui
+  namespace: todo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: todo-ui
+  template:
+    metadata:
+      name: todo-ui-pod
+      labels:
+        app: todo-ui
+    spec:
+      containers:
+        - name: todo-ui
+          image: pavanelthepu/todo-ui:1.0.2
+          ports:
+            - containerPort: 80
+          env:
+            - name: "REACT_APP_BACKEND_SERVER_URL"
+              value: "http://todo.com/api"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: todo-ui-service
+  namespace: todo
+spec:
+  selector:
+    app: todo-ui
+  ports:
+    - name: http
+      port: 3001
+      targetPort: 80
+
+------------------------------------------------------------------------
+
+Next Step: Apply the ingress rule which is given above for todo list app 
+
+Notes: annotations:	
+		nginx.ingress.kubernetes.io/rewrite-target:/$1 --- How this works
+		
+		path: /api/(.*)  
+		example: client is accessing http://todo.com/api/api/todo -> http://todo.com/api/todos
+		
+minikube@e2e-81-105:~/todo-app-ingress$ kubectl get endpoints -n todo
+NAME               ENDPOINTS                             AGE
+todo-api-service   10.244.0.199:8082,10.244.0.201:8082   48m
+todo-ui-service    10.244.0.200:80,10.244.0.202:80       48m
+
+Note: To confirm the ingress rule run this command which will show the mapping of the service to the pod ip 
+
+Now curl -v http://todo.com/, http://todo.com/app
+	
+------------------------------ END OF PATH BASED ROUTING -----------------------------
+
+----- Host based routing ---------------
+
+todo-hostbased.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: todo-ingress-host-based
+  namespace: todo
+spec:
+  rules:
+    - host: todo-ui.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: todo-ui-service
+                port:
+                  number: 3001
+    - host: todo-ui.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+               service:
+                name: todo-api-service
+                port:
+                  number: 8082
+
+
+minikube@e2e-81-105:~/todo-app-ingress$ kubectl get ingress -n  todo
+NAME                      CLASS   HOSTS                     ADDRESS        PORTS   AGE
+todo-ingress-host-based   nginx   todo-ui.com,todo-ui.com   192.168.49.2   80      3m25s
+todo-ingress-path-based   nginx   todo.com                  192.168.49.2   80      17m
+
+$ sudo vi /etc/hosts
+ip todo-ui.com
+ip todo-api.com
+minikube@e2e-81-105:~/todo-app-ingress$ curl -v http://todo-api.com/api/todos
+*   Trying 192.168.49.2:80...
+* Connected to todo-api.com (192.168.49.2) port 80 (#0)
+> GET /api/todos HTTP/1.1
+> Host: todo-api.com
+> User-Agent: curl/7.81.0
+> Accept: */*
+>
+
+minikube@e2e-81-105:~/todo-app-ingress$ curl -v http://todo-ui.com
+*   Trying 192.168.49.2:80...
+* Connected to todo-ui.com (192.168.49.2) port 80 (#0)
+> GET / HTTP/1.1
+> Host: todo-ui.com
+> User-Agent: curl/7.81.0
+> Accept: */*
+>
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 200 OK
+< Date: Tue, 10 Jun 2025 19:51:26 GMT
+< Content-Type: text/html
+< Content-Length: 586
+< Connection: keep-alive
+< Last-Modified: Sat, 23 Oct 2021 07:07:47 GMT
+< ETag: "6173b4c3-24a"
+< Accept-Ranges: bytes
+<
+* Connection #0 to host todo-ui.com left intact
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name="theme-color" content="#000000"><link rel="manifest" href="/manifest.json"><link rel="shortcut icon" href="/favicon.ico"><script src="/env-config.js"></script><title>Todo List</title><link href="/static/css/main.2e905888.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div><script type="text/javascript" src="/static/js/main.ca77c612.js"
+
+Next Steps: ------ For deafult Routing --------------------
+
+minikube@e2e-81-105:~/todo-app-ingress$ kubectl describe ing nginx-ingres
+Name:             nginx-ingress
+Labels:           <none>
+Namespace:        default
+Address:          192.168.49.2
+Ingress Class:    nginx
+Default backend:  <default>
+Rules:
+  Host            Path  Backends
+  ----            ----  --------
+  nginx-demo.com
+                  /   nginx-service:8082 (10.244.0.188:80,10.244.0.190:80,10.244.0.187:80 + 1 more...)
+Annotations:      <none>
+Events:           <none>
+
+For default backend how to route it to custom dashboard where it says 404 not found if the user access diff url
+
+✅ What You Want:
+When the user accesses something like http://todo.com/invalid/path, instead of:
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: todo-ingress
+  namespace: todo
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+spec:
+  rules:
+    - host: todo.com
+      http:
+        paths:
+          - path: /api/?(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: todo-api-service
+                port:
+                  number: 8080
+          - path: /?(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: todo-ui-service
+                port:
+                  number: 3001
+          # 👇 This is the fallback for ANY other path
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: todo-ui-service
+                port:
+                  number: 3001
+
+
+================== Securing the application with TLS with https protocl using ingress resouce ==
+=================
+
+Step1: Generate our self signed certificate and private key with openssl
+
+$ openssl req -x509 -newkey rsa:4096 -sha256 -nodes \
+  -keyout tls.key -out tls.crt \
+  -subj "/CN=nginx-demo.com" -days 365
+
+step2: We need to give this self signed certificate to the ingress rule for that create a secret
+
+$ kubectl create secret tls nginx-demo-com-tls --cert tls.crt --key tls.key (General syntx hostname with suffix tls with - )
+
+minikube@e2e-81-105:~/todo-app-ingress$ kubectl create secret tls nginx-demo-com-tls --cert tls.crt --key tls.key
+secret/nginx-demo-com-tls created
+
+Step3: Now we can secure the ingress by specifying the secret which we created which contains the tls.key tls.crt (private key and certificate)
+
+nginx-ingress-tls.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-ingress
+spec:
+  tls:
+    - secretName: nginx-demo-com-tls
+      hosts:
+        - "nginx-demo.com"
+  rules:
+    - host: nginx-demo.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-service
+                port:
+                  number: 8082
+
+minikube@e2e-81-105:~/todo-app-ingress$ curl -v https://nginx-demo.com
+*   Trying 192.168.49.2:443...
+* Connected to nginx-demo.com (192.168.49.2) port 443 (#0)
+* ALPN, offering h2
+* ALPN, offering http/1.1
+*  CAfile: /etc/ssl/certs/ca-certificates.crt
+*  CApath: /etc/ssl/certs
+* TLSv1.0 (OUT), TLS header, Certificate Status (22):
+* TLSv1.3 (OUT), TLS handshake, Client hello (1):
+* TLSv1.2 (IN), TLS header, Certificate Status (22):
+* TLSv1.3 (IN), TLS handshake, Server hello (2):
+* TLSv1.2 (IN), TLS header, Finished (20):
+* TLSv1.2 (IN), TLS header, Supplemental data (23):
+* TLSv1.3 (IN), TLS handshake, Encrypted Extensions (8):
+* TLSv1.2 (IN), TLS header, Supplemental data (23):
+* TLSv1.3 (IN), TLS handshake, Certificate (11):
+* TLSv1.2 (OUT), TLS header, Unknown (21):
+* TLSv1.3 (OUT), TLS alert, unknown CA (560):
+* SSL certificate problem: self-signed certificate
+* Closing connection 0
+curl: (60) SSL certificate problem: self-signed certificate
+More details here: https://curl.se/docs/sslcerts.html
+
+curl failed to verify the legitimacy of the server and therefore could not
+establish a secure connection to it. To learn more about this situation and
+how to fix it, please visit the web page mentioned above.
+
+
+=========================== EBD OF INGRESS ================================================
+
+
+=================== NAMESPACE ===================================
+To set the custom namspace as deafult 
+
+$ kubectl config set-contex --current --namepsce=nginx
+--> now if you dont provide this namespaces this will be the default namespace 
+
+To access a service which is in diff nameoace we need to give the namespace 
+Inside the nginx container
+$ curl todo-api-service:8080.todo:8080/api/todos
+
+Deleting a namespace will delete all the resource in that namepace 
+
+
+============================= Kubernetes Volumes ============================
+
+As we know Containers are ephimeral meaning when a container is deleted all the associated data will be delete but this can solved by using docker volume. The same applies to k8s 
+
+How to persist the data: 
+
+Problem Statements: 
+
+1. We can deploy a app as an deployment k8s will ensure certain no of replicas are running 
+So let say one of the pod goes down the replacement pod will come up but the data which is there in the pod will be deleted which leads to data loss 
+
+2. When we have multiple replicas of the same application how do they share the volume ?? 
+ because the data is stored inside the container data is not shared to other pods
+
+with k8s volumes we can solve this prblem
+In simple words volume is a dir with some data in it and all the replicas container can share the dir 
+
+Mong-pvc.yaml -- first create the pvc then attach it to the container mount
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongo-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+
+Deploying MongoDB with pvc
+mongo-deployment.yaml 
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+        - image: mongo
+          name: mongo
+          args: ["--dbpath", "/data/db"]
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              value: "admin"
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              value: "password"
+          volumeMounts:
+            - mountPath: /data/db # Inside the container
+              name: mongo-volume
+      volumes:
+        - name: mongo-volume
+          persistentVolumeClaim:
+            claimName: mongo-pvc
+
+$ kubectl port-forward svc/mongo-svc 3200:27017 -- this is if you have UI access you can use mongo compass 
+
+minikube@e2e-81-105:~/volumes$ kubectl exec -it mongo-5f8cdc84b-skbfl -- bash
+root@mongo-5f8cdc84b-skbfl:/# mongosh
+Current Mongosh Log ID: 684a75bb5bd78b0fea69e327
+Connecting to:          mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000&appName=mongosh+2.5.2
+Using MongoDB:          8.0.10
+Using Mongosh:          2.5.2
+
+For mongosh info see: https://www.mongodb.com/docs/mongodb-shell/
+
+
+To help improve our products, anonymous usage data is collected and sent to MongoDB periodically (https://www.mongodb.com/legal/privacy-policy).
+You can opt-out by running the disableTelemetry() command.
+
+test> use admin
+... db.auth("admin", "password")
+...
+switched to db admin
+admin> db.users.insertOne({
+...   name: "Arjun Karekar",
+...   email: "arjun@example.com",
+...   age: 28
+... })
+...
+MongoServerError[Unauthorized]: Command insert requires authentication
+admin> use testdb
+...
+switched to db testdb
+testdb> db.users.insertOne({
+...   name: "Arjun Karekar",
+...   email: "arjun@example.com",
+...   age: 28
+... })
+...
+MongoServerError[Unauthorized]: Command insert requires authentication
+testdb>
+... MongoServerError[Unauthorized]: Command insert requires authentication
+... admin> use testdb
+... ...
+... switched to db testdb
+... testdb> db.users.insertOne({
+... ...   name: "Arjun Karekar",
+... ...   email: "arjun@example.com",
+... ...   age: 28
+... ... })
+... ...
+... MongoServerError[Unauthorized]: Comman
+Uncaught:
+SyntaxError: Missing semicolon. (2:30)
+
+  1 |
+> 2 | MongoServerError[Unauthorized]: Command insert requires authentication
+    |                               ^
+  3 | admin> use testdb
+  4 | ...
+  5 | switched to db testdb
+
+testdb> use admin
+switched to db admin
+admin> db.auth("admin", "password")
+...
+{ ok: 1 }
+admin> use testdb
+...
+... db.users.insertOne({
+...   name: "Arjun Karekar",
+...   email: "arjun@example.com",
+...   age: 28
+... })
+...
+switched to db testdb
+testdb> db.users.insertOne({
+...   name: "Arjun Karekar",
+...   email: "arjun@example.com",
+...   age: 28
+... })
+{
+  acknowledged: true,
+  insertedId: ObjectId('684a76325bd78b0fea69e32a')
+}
+testdb> db.users.find()
+...
+[
+  {
+    _id: ObjectId('684a76325bd78b0fea69e32a'),
+    name: 'Arjun Karekar',
+    email: 'arjun@example.com',
+    age: 28
+  }
+]
+testdb> db.users.find().pretty()
+...
+[
+  {
+    _id: ObjectId('684a76325bd78b0fea69e32a'),
+    name: 'Arjun Karekar',
+    email: 'arjun@example.com',
+    age: 28
+  }
+]
+testdb> db.users.find({ name: "Arjun Karekar", age: 28 })
+...
+[
+  {
+    _id: ObjectId('684a76325bd78b0fea69e32a'),
+    name: 'Arjun Karekar',
+    email: 'arjun@example.com',
+    age: 28
+  }
+]
+
+
+✅ What Happens Without a PVC?
+By default, when you run a container (like MongoDB) without a volume, the data is stored in the container's ephemeral filesystem (like /data/db inside the container).
+
+Problems:
+
+If the Pod is restarted or re-created → all data is lost.
+
+Kubernetes treats containers as disposable → not safe for persistent storage.
+
+✅ Why We Use PVC (PersistentVolumeClaim)
+A PVC is a request for persistent storage in Kubernetes, which:
+
+Binds to a PersistentVolume (PV) — a piece of actual storage on disk (hostPath, EBS, etc.).
+
+Mounts that disk to the container’s file system.
+
+Keeps your MongoDB data safe even if the Pod is deleted.
+
+
+| Feature           | With PVC   | Without PVC    |
+| ----------------- | ---------- | -------------- |
+| Data persistence  | ✅ Yes      | ❌ No           |
+| Safe pod restarts | ✅ Yes      | ❌ No           |
+| Backed by storage | ✅ Yes (PV) | ❌ Only RAM/tmp |
+
+
+🔧 Optional: Want the Data in /data2 on Host?
+If you really want to map MongoDB data to your host machine's /data2, you'd need to use a hostPath volume instead of a PVC. Example:
+volumes:
+  - name: mongo-volume
+    hostPath:
+      path: /data2
+      type: DirectoryOrCreate
+
+But that’s not recommended for production — just dev/debug purposes.
+
+
+Note: how the data is stored in pvc's? what happens if delete the mongo pod 
+
+✅ What Happens When You Use a PVC?
+When you define a PersistentVolumeClaim (PVC) and mount it to your container (like MongoDB), Kubernetes provisions a PersistentVolume (PV) — actual storage — and mounts it into the pod's container file system.
+
+Think of it as attaching a durable disk to your container.
+
+🧠 How the Data is Stored
+MongoDB writes data to /data/db (or whatever you specify).
+
+That directory is mounted to a PVC.
+The PVC is backed by a PV — which might be:
+A local path (Minikube)
+A cloud disk (AWS EBS, GCP PD, etc.)
+Kubernetes ensures that any data written there is stored outside the pod's lifecycle.
+
+
+❌ What Happens If You Delete the MongoDB Pod?
+✅ The PVC and its data are NOT deleted.
+Kubernetes will destroy the pod/container.
+But the data in the PVC remains intact on the disk.
+When a new Mongo pod is created with the same PVC:
+It reattaches to the existing volume.
+All your data (collections, documents) is still there.
+
+🔁 Full Pod Lifecycle with PVC
+| Action                     | Result                                                              |
+| -------------------------- | ------------------------------------------------------------------- |
+| Delete pod                 | Data is safe (PVC persists)                                         |
+| Restart pod                | Data is safe                                                        |
+| Reschedule pod to new node | PVC is re-attached (if storage class supports dynamic provisioning) |
+| Delete PVC                 | ❗ Data is deleted (depending on reclaim policy)                     |
+| Delete PV manually         | ❗ Data is deleted                                                   |
+
+⚠️ Caution: Reclaim Policy
+Retain: Data stays even after PVC is deleted
+Delete: Data is deleted when PVC is deleted
+Recycle: Deprecated — not used anymore
+
+For Minikube, it’s usually Delete.
+
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM               STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+pvc-c94c99be-d0b6-4a8d-8b9e-72c07f864cf6   1Gi        RWO            Delete           Bound    default/mongo-pvc   standard       <unset>                          51m
+minikube@e2e-81-105:~/volumes$ kubectl describe pv pvc-c94c99be-d0b6-4a8d-8b9e-72c07f864cf6
+Name:            pvc-c94c99be-d0b6-4a8d-8b9e-72c07f864cf6
+Labels:          <none>
+Annotations:     hostPathProvisionerIdentity: 469519ea-ec69-4068-b791-43c5c5939547
+                 pv.kubernetes.io/provisioned-by: k8s.io/minikube-hostpath
+Finalizers:      [kubernetes.io/pv-protection]
+StorageClass:    standard
+Status:          Bound
+Claim:           default/mongo-pvc
+Reclaim Policy:  Delete
+Access Modes:    RWO
+VolumeMode:      Filesystem
+Capacity:        1Gi
+Node Affinity:   <none>
+Message:
+Source:
+    Type:          HostPath (bare host directory volume)
+    Path:          /tmp/hostpath-provisioner/default/mongo-pvc
+    HostPathType:
+Events:            <none>
+
+
+Note: where the data is actually stored if not using host path ?? 
+
+🧠 Big Picture: Container → PVC → PV → Host Path
+
+MongoDB container writes to → /data/db  (inside container)
+                         is mounted to
+PVC claim → mongo-pvc    (Kubernetes abstraction)
+                         is bound to
+PV (PersistentVolume)    (Kubernetes-managed volume)
+                         uses
+Host path / backing disk (on your Minikube VM or host)
+
+
+✅ Where Is the Data Actually Stored in Minikube?
+Minikube creates a virtual machine (or container, depending on your driver). Inside that Minikube VM, Kubernetes mounts volumes under:
+
+/var/lib/kubelet/pods/<pod-id>/volumes/kubernetes.io~<volume-type>/<volume-name>/
+This is not directly visible from your local /data2 or similar host path, unless you SSH into the Minikube VM.
+
+$minikube ssh
+$sudo ls /var/lib/kubelet/pods
+$sudo find /var/lib/kubelet/pods -type d -name mongo-volume
+	WiredTiger
+	collection-0-*.wt
+	journal/
+
+🧠 Why Two Names: PV and PVC?
+
+| Concept                         | Purpose                                              | Think of it like...               |
+| ------------------------------- | ---------------------------------------------------- | --------------------------------- |
+| **PV (PersistentVolume)**       | The **actual disk/storage** available in the cluster | A physical USB drive plugged in   |
+| **PVC (PersistentVolumeClaim)** | A request by a pod for storage                       | You saying "I need 5 GB of space" |
+
+minikube@e2e-81-105:~/volumes$ kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM               STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+pvc-c94c99be-d0b6-4a8d-8b9e-72c07f864cf6   1Gi        RWO            Delete           Bound    default/mongo-pvc   standard       <unset>                          55m
+minikube@e2e-81-105:~/volumes$ kubectl get pvc
+NAME        STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+mongo-pvc   Bound    pvc-c94c99be-d0b6-4a8d-8b9e-72c07f864cf6   1Gi        RWO            standard       <unset>                 56m
+
+
+Note: we just created the pvc how it created pv automatically 
+🎯 Short Answer:
+The PersistentVolume (PV) was automatically created from your PVC because of a default StorageClass in your cluster (like Minikube).
+
+
+🧠 What Is a StorageClass?
+A StorageClass defines how to provision storage dynamically — like a template.
+
+When you create a PVC without defining a PV, Kubernetes checks:
+Is dynamic provisioning allowed?
+Is there a default StorageClass?
+If yes → It automatically provisions a matching PV for your PVC.
+
+$kubectl get storageclass
+NAME                 PROVISIONER                RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
+standard (default)   k8s.io/minikube-hostpath   Delete          Immediate           false                  30d
+
+This means:
+standard is the default StorageClass
+It provisions PVs using hostPath (inside Minikube VM)
+
+💡 PVC Triggers PV Creation Automatically
+
+When you apply just a PVC YAML:➡️ Kubernetes sees no PV, so it says: “Hey, I have a default StorageClass. I’ll use that to make a PV.”
+
+NAME                                       CAPACITY   ACCESS MODES   STATUS
+pvc-123abc-uuid                            1Gi        RWO            Bound
+
+📦 Storage Path in Minikube
+The actual data is stored in the Minikube VM under something like:
+/var/lib/minikube/hostpath/
+
+
+Or inside:
+/var/lib/kubelet/pods/<pod-id>/volumes/
+
+| Concept                  | Explanation                                                               |
+| ------------------------ | ------------------------------------------------------------------------- |
+| Only PVC created         | Kubernetes uses a default StorageClass                                    |
+| PV created automatically | Called **dynamic provisioning**                                           |
+| Why it works             | Because a StorageClass like `standard` is marked as `(default)`           |
+| Manual PV needed?        | Only if you want custom disks, local paths, or cloud disks (like AWS EBS) |
+
+========================= END OF VOLUMES =======================================
+
+
+
+========================== Statefulsets ======================================
+Stateful vs Stateless 
+
+Suppose there is a springboot application which has two instance running. When a user tries to login the login api is called and it should service the login request (By flagging authentication: true)and should not ask the same for another instance so this kind of state paramaters are store in Database so that once you login the springboot expects the same token which is given at the first.
+
+As we are not storing anything in springboot app it is called as stateless application 
+A we are storing the state the DB is called the stateful application 
+---------------------------------------------------------------------
+Problems when we deploy as deployment for statefull applicatons
+--------------------------------------------------------------------
+1. Separate pvc for each replica is not possible 
+Previosly we used the single replica for the mongodb. for high availability if we use 3 replicas all the pods will use the same pvc which can cause data loss / inconsistency. What if we want a separate pvc for each replica this can be solved by using statefullset. We ca use volumeClaimTemplates can be assigned separately for each pod 
+
+2. Sequential creation of pods for statefull databases. (Where one pod is depended on another)
+In typical master slave architecture there will be master and slave configuration - the master handles the writes and slave handles the reads 
+So first the master should be running first then slaves should come up and data from the master should be copied to slave1 and slave2 should come up now instead of getting the data from the master again it will get the data from slave1 so the load on the master should be less. Hence all the slaves sink the data from the master node. So to achieve this pods should come up one to one as the data should be copied from a previos replica. But if we deploy as deployment all the pods are created parrallely. If we deploy as sts pods are created by one one. if the first pod fails for any reason second pod will not be created.
+Also if we delete the stateful set the last pod is deleted first 
+
+3. Sticky identity & storage for pods when it will restart (To be databases master slave in sync)
+i. Since if we deploy the database as cluster all the data should be replicated in all the replicas. For this we need stickey identity to each pod in the cluster. Which means we need a dns and that dns should not change even  if the pod restarts. If it restarts the other replicas cannot find it. To achieve this ther must be constant name for all pods. Meaning if we restart the pod it should have the same after restarting. This is called as stickey identity. So if we deploy as a deployment the pod will come with random name. This will be taken care by the Statefulsets no need to define anywhere in yaml 
+ii. Also each pod will be assigned with differnt pvc, So even if the pod is restarted the same old pvc get binded with pv.
+
+pods will be scheduled like this -> mongo-1, mongo-2, mongo-2 
+
+4. Modifying the traffic to only one pod (Headless services)
+So if we dont want to use any loadbalancing and want to forward the traffic only to one pod we can use headless services. When we specify ClusterIp as None that service is called as a headless service. Through this service each pod will get its is dns entry
+
+Each pod will get a stable dns like below
+PodName	Svc	  Namespace												Headless Service
+   |	|		|															 |
+mongo-0.mongo.default.svc.cluster.local-> DNS							 	 | 
+													----------------------------------------------							 
+													| 						 |					 |				
+										  DB cluster| 						 |					 |
+										            |  						 | 					 | 
+											    Master					   Slave1  				Slave2 
+													|						 |					  | 
+													|						 |					  |
+													|						 | 					  |
+												Pods| 						 | 					  |
+												Mongo-0 				 Mongo-1				Mongo-2
+	
+	 
+	 
+So the request will sent to only mongo-0 pod since we do not need the loadbalancing'
+
+--------------
+Headless.yaml 
+--------------
+apiVersion: v1
+kind: Service 
+metadata: 
+	name: mongo
+spec: 
+  ports:
+     -name: mongo
+	  port: 27017      # Port exposed by the container
+	  targetPort: 27017 # port exposed by the service
+  ClusterIp: None  # None -> this is called as headless service
+  selector: 
+	 app: mongo
+
+Problems Summary: 
+1. Separate PVs
+2. Ordered Pods (Create/Update/Delete -> Scaling and termination)
+3. Stickey Identity
+	 
+	 
+Differce Table StatefulSets v/s Deployment 
+| Feature                             | **Deployment**                                              | **StatefulSet**                                                                        |
+| ----------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **Use Case**                        | Stateless applications (e.g., web apps, APIs)               | Stateful applications (e.g., databases like MongoDB, Kafka, Elasticsearch)             |
+| **Pod Identity**                    | Pods are interchangeable (no fixed name)                    | Each pod has a **stable, unique identity** (like `mongo-0`, `mongo-1`, ...)            |
+| **Storage**                         | Shared or ephemeral storage (PVCs not tied to pod identity) | Each pod gets a **dedicated PVC** that sticks with it even if the pod is rescheduled   |
+| **Network Identity**                | No stable DNS name per pod                                  | Each pod gets a **stable DNS** like `mongo-0.mongo-headless.default.svc.cluster.local` |
+| **Pod Names**                       | Randomly generated (e.g., `app-74fc`)                       | Fixed (e.g., `mongo-0`, `mongo-1`, ...)                                                |
+| **Ordering (create/update/delete)** | No guaranteed order                                         | Has **ordered** start, scaling, and termination                                        |
+| **Scaling Behavior**                | Any pod can be removed or replaced anytime                  | Each pod is created/deleted in sequence (important for clustered DBs)                  |
+| **Rolling Updates**                 | Fully supported                                             | Supported, but done **pod-by-pod in order**                                            |
+| **Volume Claim Templates**          | Not supported directly                                      | Supported — each pod gets its own **dedicated volume**                                 |
+| **Headless Service**                | Not usually needed                                          | **Required** to enable stable DNS for each pod                                         |
+
+
+🧠 Summary in 1 Line
+Use a Deployment when your app is stateless and pods don’t care about their identity.
+Use a StatefulSet when your app is stateful, needs stable identities, ordered operations, and dedicated storage.
+
+--------------------------------------------------
+Example Configuration for Sts (DB - Mongo DB): 
+--------------------------------------------------
+To know the apiVersion -> minikube@e2e-81-105:~$ kubectl api-resources | grep statefulsets
+statefulsets                        sts          apps/v1                           true
+
+
+Statefulset.yaml 
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo
+spec:
+  selector:
+    matchLabels:
+      app: mongo
+  serviceName: "mongo"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:4.0.8
+          startupProbe:
+            exec:
+              command:
+                - mongo
+                - --eval
+                - "db.adminCommand('ping')"
+            initialDelaySeconds: 1
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 2
+          livenessProbe:
+            exec:
+              command:
+                - mongo
+                - --eval
+                - "db.adminCommand('ping')"
+            initialDelaySeconds: 1
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 2
+          readinessProbe:
+            exec:
+              command:
+                - mongo
+                - --eval
+                - "db.adminCommand('ping')"
+            initialDelaySeconds: 1
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 2
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  key: username
+                  name: mongodb-config
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: mongodb-secret
+          command:
+            - mongod
+            - "--bind_ip_all"
+			- "--replSet"
+			- rs0
+          volumeMounts:
+            - name: mongo-volume
+              mountPath: /data/db
+            - name: mongodb-config
+              mountPath: /etc/mongo
+      volumes:
+        - name: mongodb-config
+          configMap:
+            name: mongodb-config
+            items:
+              - key: mongodb.conf
+                path: mongodb.conf
+  volumeClaimTemplates:
+    - metadata:
+        name: mongo-volume
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: demo-storage
+        resources:
+          requests:
+            storage: 1Gi
+
+minikube@e2e-81-105:~/statefulSets$ kubectl get po
+NAME                                      READY   STATUS    RESTARTS        AGE
+kubectl-pod                               1/1     Running   26 (139m ago)   6d2h
+mongo-0                                   1/1     Running   0               6m44s
+mongo-1                                   1/1     Running   0               3m52s
+mongo-2                                   1/1     Running   0               3m40s
+
+To Scale up/down the replicas 
+$ kubectl scale sts mongo --replicas=10
+minikube@e2e-81-105:~/statefulSets$ kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                          STORAGECLASS   VOLUMEATTRIBUTESCLASS   REASON   AGE
+pvc-30fc807c-ec0e-4955-8870-7fbee82e2641   1Gi        RWO            Delete           Bound    default/mongo-volume-mongo-2   demo-storage   <unset>                          5m25s
+pvc-b5c080ef-6add-4055-a02d-aa9d02edff3e   1Gi        RWO            Delete           Bound    default/mongo-volume-mongo-0   demo-storage   <unset>                          8m29s
+pvc-c94c99be-d0b6-4a8d-8b9e-72c07f864cf6   1Gi        RWO            Delete           Bound    default/mongo-pvc              standard       <unset>                          6h37m
+pvc-de262dad-5edb-4ae2-94b7-622e2df88872   1Gi        RWO            Delete           Bound    default/mongo-volume-mongo-1   demo-storage   <unset>                          5m37s
+minikube@e2e-81-105:~/statefulSets$ kubectl get pvc
+NAME                   STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+mongo-pvc              Bound    pvc-c94c99be-d0b6-4a8d-8b9e-72c07f864cf6   1Gi        RWO            standard       <unset>                 6h37m
+mongo-volume-mongo-0   Bound    pvc-b5c080ef-6add-4055-a02d-aa9d02edff3e   1Gi        RWO            demo-storage   <unset>                 8m30s
+mongo-volume-mongo-1   Bound    pvc-de262dad-5edb-4ae2-94b7-622e2df88872   1Gi        RWO            demo-storage   <unset>                 5m38s
+mongo-volume-mongo-2   Bound    pvc-30fc807c-ec0e-4955-8870-7fbee82e2641   1Gi        RWO            demo-storage   <unset>                 5m26s
+
+minikube@e2e-81-105:~/statefulSets$ kubectl describe pod mongo-0 | grep volume
+      /data/db from mongo-volume (rw)
+  mongo-volume:
+    ClaimName:  mongo-volume-mongo-0
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+
+Mongo-headless-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+spec:
+  ports:
+    - name: mongo
+      port: 27017
+      targetPort: 27017
+  clusterIP: None
+  selector:
+     app: mongo
+
+
+minikube@e2e-81-105:~/statefulSets$ kubectl get svc
+NAME                        TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)           AGE
+kubernetes                  ClusterIP   10.96.0.1       <none>        443/TCP           30d
+mongo                       ClusterIP   None            <none>        27017/TCP         4s
+
+
+Note: Sts just created the replica pods the actual replication of the data should be configure by us 
+
+minikube@e2e-81-105:~/statefulSets$ kubectl exec -it mongo-0 -- bash
+root@mongo-0:/# mongosh
+bash: mongosh: command not found
+
+means that the mongosh shell (MongoDB's new shell) is not installed in the container you're running.
+If you're using the official mongo Docker image (like mongo:4.2, mongo:5, etc.), it usually includes the legacy mongo shell, not mongosh.
+
+Try this 
+mongo -u admin -p password --authenticationDatabase admin
+
+This also fails then do 
+
+✅ You're using the legacy mongo shell
+The Docker image you're using is mongo:4.2.24, which includes the classic shell (mongo) but not the newer mongosh.
+
+In MongoDB versions prior to 5.x, the legacy shell (mongo) is included in the image by default.
+
+minikube@e2e-81-105:~/statefulSets$ kubectl exec -it mongo-0 -- mongo
+MongoDB shell version v4.2.24
+connecting to: mongodb://127.0.0.1:27017/?compressors=disabled&gssapiServiceName=mongodb
+Implicit session: session { "id" : UUID("8fb11e82-2478-4515-ba26-fbeccebb9de7") }
+MongoDB server version: 4.2.24
+Server has startup warnings:
+2025-06-12T12:46:30.830+0000 I  STORAGE  [initandlisten]
+2025-06-12T12:46:30.830+0000 I  STORAGE  [initandlisten] ** WARNING: Using the XFS filesystem is strongly recommended with the WiredTiger storage engine
+2025-06-12T12:46:30.830+0000 I  STORAGE  [initandlisten] **          See http://dochub.mongodb.org/core/prodnotes-filesystem
+2025-06-12T12:46:30.990+0000 I  CONTROL  [initandlisten]
+2025-06-12T12:46:30.990+0000 I  CONTROL  [initandlisten] ** WARNING: Access control is not enabled for the database.
+2025-06-12T12:46:30.990+0000 I  CONTROL  [initandlisten] **          Read and write access to data and configuration is unrestricted.
+2025-06-12T12:46:30.990+0000 I  CONTROL  [initandlisten] ** WARNING: You are running this process as the root user, which is not recommended.
+2025-06-12T12:46:30.990+0000 I  CONTROL  [initandlisten]
+---
+Enable MongoDB's free cloud-based monitoring service, which will then receive and display
+metrics about your deployment (disk utilization, CPU, operation statistics, etc).
+
+The monitoring data will be available on a MongoDB website with a unique URL accessible to you
+and anyone you share the URL with. MongoDB may use this information to make product
+improvements and to suggest MongoDB products and deployment options to you.
+
+To enable free monitoring, run the following command: db.enableFreeMonitoring()
+To permanently disable this reminder, run the following command: db.disableFreeMonitoring()
+---
+# this is to initiate the replica set mode
+> rs.initiate(
+   {
+      _id: "rs0", # change according the sts.yaml
+      version: 1,
+      members: [
+         { _id: 0, host : "mongo-0.mongo.default.svc.cluster.local:27017" },
+         { _id: 1, host : "mongo-1.mongo.default.svc.cluster.local:27017" },
+         { _id: 2, host : "mongo-2.mongo.default.svc.cluster.local:27017" }
+      ]
+   }
+)
+
+------ Now logout and login again 
+
+minikube@e2e-81-105:~$ kubectl exec -it mongo-0 -- mongo
+MongoDB shell version v4.2.24
+connecting to: mongodb://127.0.0.1:27017/?compressors=disabled&gssapiServiceName=mongodb
+Implicit session: session { "id" : UUID("489946ce-30cc-45ea-add3-0dc9de95d327") }
+MongoDB server version: 4.2.24
+Server has startup warnings:
+2025-06-12T13:29:40.867+0000 I  STORAGE  [initandlisten]
+2025-06-12T13:29:40.867+0000 I  STORAGE  [initandlisten] ** WARNING: Using the XFS filesystem is strongly recommended with the WiredTiger storage engine
+2025-06-12T13:29:40.867+0000 I  STORAGE  [initandlisten] **          See http://dochub.mongodb.org/core/prodnotes-filesystem
+2025-06-12T13:29:41.400+0000 I  CONTROL  [initandlisten]
+2025-06-12T13:29:41.400+0000 I  CONTROL  [initandlisten] ** WARNING: Access control is not enabled for the database.
+2025-06-12T13:29:41.400+0000 I  CONTROL  [initandlisten] **          Read and write access to data and configuration is unrestricted.
+2025-06-12T13:29:41.400+0000 I  CONTROL  [initandlisten] ** WARNING: You are running this process as the root user, which is not recommended.
+2025-06-12T13:29:41.400+0000 I  CONTROL  [initandlisten]
+---
+Enable MongoDB's free cloud-based monitoring service, which will then receive and display
+metrics about your deployment (disk utilization, CPU, operation statistics, etc).
+
+The monitoring data will be available on a MongoDB website with a unique URL accessible to you
+and anyone you share the URL with. MongoDB may use this information to make product
+improvements and to suggest MongoDB products and deployment options to you.
+
+To enable free monitoring, run the following command: db.enableFreeMonitoring()
+To permanently disable this reminder, run the following command: db.disableFreeMonitoring()
+---
+
+rs0:PRIMARY> rs.status
+rs0:PRIMARY> db.todos.insert({"name": "arjun"})
+WriteResult({ "nInserted" : 1 })
+
+
+Login to other two slaves 
+
+mongo-1
+rs0:SECONDARY> rs.secondaryOk()
+rs0:SECONDARY> db.todos.find()
+{ "_id" : ObjectId("684ad78b1d38612fbd8f895f"), "name" : "arjun" }
+rs0:SECONDARY> db.todos.find()
+{ "_id" : ObjectId("684ad78b1d38612fbd8f895f"), "name" : "arjun" }
+rs0:SECONDARY> db.todos.find()
+
+
+mongo02
+rs0:SECONDARY> rs.secondaryOk()
+rs0:SECONDARY> db.todos.find()
+{ "_id" : ObjectId("684ad78b1d38612fbd8f895f"), "name" : "arjun" }
+
+Hence Replciation is working 
+
+
+
+
+================ ConfigMaps And Secrets ============================
+
+Configmaps is solving the problem of storing the informations that can be used by the app later point of time (Like storing the DB Management port details - nonsensitive data)
+
+Secrets deal with sesitive data like DB password we cannot store the sensive data in the configmap because the all the information is stored in etcd as object store, So attackers cant hack 
+
+
+So if you have non sensitice data store that in ConfigMaps if sensitvie store in Secrets
+
+What differnce will it make? before the object is stores in etcd the secrets data will be encrypted by default alogorithm or we can use any algorithm which we like 
+
+So only least number of people should have access to secrets (Using Kubernetes RBAC).
+
+User -> yaml -> kubectl apply -> configmaps -> api server saves -> etcd  (Configmaps)
+User -> yaml -> kubectl apply -> configmaps -> api server saves -> encrypted data ->  etcd (Secrets)
+
+Example below is to set up the env variables for the python app usinf CM
+
+==============================
+Creating a configmap.yaml 
+=============================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+data:
+  db-port: "3306"
+================================
+deployment.yaml (After applying the config map env:)
+================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-deployment
+  labels:
+    app: django-python-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: django-python-app
+  template:
+    metadata:
+      labels:
+        app: django-python-app
+    spec:
+      containers:
+        - name: python-app
+          image: arjunkarekar/python-django-app:latest
+          env:
+            - name: DB-PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: test-cm
+                  key: db-port
+          ports:
+            - containerPort: 8000
+
+Before the CM:
+
+$kubectl get cm 
+minikube@e2e-81-105:~/python-app$ kubectl get pods | grep python
+python-deployment-65b8db7945-qsqxp   1/1     Running   0          21s
+python-deployment-65b8db7945-rnzjl   1/1     Running   0          21s
+minikube@e2e-81-105:~/python-app$ kubectl exec -it  python-deployment-65b8db7945-qsqxp -- bash
+root@python-deployment-65b8db7945-qsqxp:/app# env | grep db
+HOSTNAME=python-deployment-65b8db7945-qsqxp
+root@python-deployment-65b8db7945-qsqxp:/app# env | grep db-
+root@python-deployment-65b8db7945-qsqxp:/app#
+
+
+After applying the CM 
+root@python-deployment-5c79f7dc5-h5dxs:/app# env | grep DB
+DB-PORT=3306
+
+Disadvantage: 
+*****************
+If someone changes the db port and save cm.yaml and even after he applies it will not reflect because the pods needs to restarted again to reflect the port change 
+
+============================================================================
+Usually this values will be changing it is better to create CM olume mounts 
+============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-deployment
+  labels:
+    app: django-python-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: django-python-app
+  template:
+    metadata:
+      labels:
+        app: django-python-app
+    spec:
+      containers:
+        - name: python-app
+          image: arjunkarekar/python-django-app:latest
+          volumeMounts:
+             - name: db-connection
+               mountPath: /opt
+          ports:
+            - containerPort: 8000
+      volumes:
+        - name: db-connection
+          configMap:
+            name: test-cm
+
+exec into the pod
+root@python-deployment-dbd6698b4-bbsl2:/opt# cat /opt/db-port | more
+3307 -- if the port was changed to 3307 and kubectl apply in the cm.yaml
+
+Now the latest port changes will reflected directly inside the container 
+
+==============================
+Creating a secret.yaml 
+=============================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dotfile-secret
+data:
+  .db-password: dnVuZXQjNzgxNA==
+  
+Here the password should be based in whichever encryption methode you want here I have used base64 encryption
+
+$echo -n "vunet#7814" | base64
+dnVuZXQjNzgxNA== 
+
+=================================
+deployment.yaml
+=================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-deployment
+  labels:
+    app: django-python-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: django-python-app
+  template:
+    metadata:
+      labels:
+        app: django-python-app
+    spec:
+      containers:
+        - name: python-app
+          image: arjunkarekar/python-django-app:latest
+          volumeMounts:
+             - name: db-connection
+               mountPath: /opt
+          ports:
+            - containerPort: 8000
+      volumes:
+        - name: db-password
+           secret:
+             secretname: dotfile-secret
+
+
+minikube@e2e-81-105:~/python-app$ kubectl exec -it  python-deployment-656ffcbd4f-9twt8   -- cat /opt/.db-password | more
+vunet#7814
+
+
+============================== RBAC ===========================================
+
+What is kubernetes RBAC
+
+RBAC is related to  security
+
+This is divided into two parts 
+
+
+		Users                             |              Service Acccounts
+		
+	Minikube,kind 					
+           ---- Admin access
+														    R B A C -> acccess to service running on the cluster and user management
+	In Organization 
+	we should define the access 
+	How to do this -- by RBAC
+
+
+
+1. Service Accounts / Users 
+2. Roles / Cluster Role 
+3. Role Banding / Cluster Role binding
+
+How to create a user though? 
+Kubernetes does not deal with user management it should be managed by other identity platform like keycloak, AWS IAM etc.
+Service account is a yaml just like creating a pod -> Service account will create default account and attach it to the pod else we can create our custom service account to control access to the k8s cluster 
+
+Role ->  Roles to have access to pod,config,secrets 
+Role Binding -> This is help in attaching the roles we'll use role binding 
+
+WorkFlow ->  
+Service Account -> Role -----> Role Binding 
+       |			|              |
+	User Man	Permission  Binding permissiona to users
+
+
+Credentials -> Authentication (400,200) -> Authorization (403,200)
+There are popular authentication tools like Rbac, attribute based access control, Node Authorization
+
+Example of RBAC to different users 
+Role  				Access
+Developer			Create, Read, Update 
+Monitoring 			Read 
+Admin 				Create, Read, Update, Delete 
+
+
+User -> Api Server(The request will be sent to api server if the authentication is valid then the user can perform action based on autherization roles)
+
+Any user who provides a valid certificate signed by this (.kube/config)certificate is considered as authenticated 
+
+Step 1: Generate the user private key with openSSL
+$ openssl genrsa -out arjun.key 2048 #this will be stored in current dir
+
+Step 2: Create the certificate signing request for the user with the arjun.key 
+$ openssl req -new -key arjun.key -out arjun.csr -subj "/CN=arjun/O=dev/O=example.org" 
+#CN is like username, #O is like group = arjun user belongs to dev and expample.org group 
+
+Step 3: Now this Certificate signing request must be signed by the certificate authority (Kubeconfig)
+$ minikube@e2e-81-105:~$ openssl x509 -req \
+  -in arjun.csr \
+  -CA /home/minikube/.minikube/ca.crt \
+  -CAkey /home/minikube/.minikube/ca.key \
+  -CAcreateserial \
+  -out arjun.crt \
+  -days 730
+Ouptput:   
+Certificate request self-signature ok
+subject=CN = arjun, O = dev, O = example.org
+
+Step 4 : Next we should add the user to the cluster with kubectl config set credentials
+$ kubectl config set-credentials arjun --client-certificate=arjun.crt --client-key=arjun.key
+
+
+
+How to create service account ?? 
+cat ~$HOME/.kube/config (Contains certificate authority)
+
+Check the whether users has been updated:
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority: /home/minikube/.minikube/ca.crt
+    extensions:
+    - extension:
+        last-update: Tue, 13 May 2025 12:06:19 IST
+        provider: minikube.sigs.k8s.io
+        version: v1.35.0
+      name: cluster_info
+    server: https://192.168.49.2:8443
+  name: minikube
+contexts:
+- context:
+    cluster: minikube
+    extensions:
+    - extension:
+        last-update: Tue, 13 May 2025 12:06:19 IST
+        provider: minikube.sigs.k8s.io
+        version: v1.35.0
+      name: context_info
+    namespace: default
+    user: minikube
+  name: minikube
+current-context: minikube
+kind: Config
+preferences: {}
+users:
+- name: minikube
+  user:
+    client-certificate: /home/minikube/.minikube/profiles/minikube/client.crt
+    client-key: /home/minikube/.minikube/profiles/minikube/client.key
+
+
+
+Step 5: kubectl config set-context arjun-minikube --cluster=minikube --user=arjun --namespace=default
+
+Next we should set the context for the arjun user with the above command 
+
+Verify: 
+minikube@e2e-81-105:~$ cat .kube/config
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority: /home/minikube/.minikube/ca.crt
+    extensions:
+    - extension:
+        last-update: Tue, 13 May 2025 12:06:19 IST
+        provider: minikube.sigs.k8s.io
+        version: v1.35.0
+      name: cluster_info
+    server: https://192.168.49.2:8443
+  name: minikube
+contexts:
+- context:
+    cluster: minikube
+    namespace: default
+    user: arjun
+  name: arjun-minikube
+- context:
+    cluster: minikube
+    extensions:
+    - extension:
+        last-update: Tue, 13 May 2025 12:06:19 IST
+        provider: minikube.sigs.k8s.io
+        version: v1.35.0
+      name: context_info
+    namespace: default
+    user: minikube
+  name: minikube
+current-context: minikube
+kind: Config
+preferences: {}
+users:
+- name: arjun
+  user:
+    client-certificate: /home/minikube/arjun.crt
+    client-key: /home/minikube/arjun.key
+- name: minikube
+  user:
+    client-certificate: /home/minikube/.minikube/profiles/minikube/client.crt
+    client-key: /home/minikube/.minikube/profiles/minikube/client.key
+
+Step 6: $kubectl config get-contexts 
+minikube@e2e-81-105:~$ kubectl config get-contexts
+
+CURRENT   NAME             CLUSTER    AUTHINFO   NAMESPACE
+          arjun-minikube   minikube   arjun      default
+*         minikube         minikube   minikube   default
+It will be to the default minikube context change it to newly added context
+		$ kubectl config use-context arjun-minikube 
+		
+minikube@e2e-81-105:~$ kubectl config get-contexts
+CURRENT   NAME             CLUSTER    AUTHINFO   NAMESPACE
+          arjun-minikube   minikube   arjun      default
+*         minikube         minikube   minikube   default
+
+minikube@e2e-81-105:~$ kubectl config use-context arjun-minikube
+Switched to context "arjun-minikube".
+
+CURRENT   NAME             CLUSTER    AUTHINFO   NAMESPACE
+*         arjun-minikube   minikube   arjun      default
+          minikube         minikube   minikube   default
+		  
+
+Since arjun user dose'nt have any permissions to the acceess services in the default namepsace it will throw this error		  
+minikube@e2e-81-105:~$ kubectl get pods
+Error from server (Forbidden): pods is forbidden: User "arjun" cannot list resource "pods" in API group "" in the namespace "default"
+
+Step 7: switch back to the minikube user 
+
+You need to map the role to the user that can be done by role and role binding 
+
+---------------Role ------------------------------
+role.yaml
+apiVersion: rbac.auhorization.k8s.io/v1
+kind: Role
+metadata:
+	name: pod-reader
+rules:
+    - apiGroups: [""] # "" indicated the core API group
+	  verbs: ["get", "watch", "list"] # Action can be performed 
+	  resources: ["pods", "pods/log"] # 
+	  
+minikube@e2e-81-105:~$ kubectl get role
+NAME         CREATED AT
+pod-reader   2025-06-06T07:13:01Z
+
+To see what kind of verbs can be given to a particular user 
+% kubeclt api-resources -o wide | grep pod
+
+Now We should bind the role to the user using Role Binding (It will map the user for the role which we have created) 
+
+-------------RoleBinding---------------------------------
+role-binding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-pods
+subjects:
+- kind: User
+  name: arjun
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+
+minikube@e2e-81-105:~$ kubectl get rolebinding
+NAME        ROLE              AGE
+read-pods   Role/pod-reader   2m18s
+
+Now we can see the arjun user is able to get the pods with role which we have given
+minikube@e2e-81-105:~$ kubectl config use-context arjun-minikube
+Switched to context "arjun-minikube".
+			
+minikube@e2e-81-105:~$ kubectl get pod
+NAME                                 READY   STATUS    RESTARTS   AGE
+python-deployment-656ffcbd4f-9twt8   1/1     Running   0          10d
+python-deployment-656ffcbd4f-c86nf   1/1     Running   0          10d
+
+STEP 8: After if we create a new space and run a pod with minikube user and switch back to arjun and try to access the pods in newly created namespace 
+
+$ kubectl config use-context minikube
+$ kubectl create namespace arjun 
+$ kubectl run nginx --image=nginx -n arjun
+$ kubectl config use-context arjun-minikube
+$ kubectl get pods -n arjun 
+Error from server (Forbidden): pods is forbidden: User "arjun" cannot list resource "pods" in API group "" in the namespace "arjun"
+
+
+--------------- Cluster & ClusterRole Binding-----------------------
+
+Note: RoleBinding access will provided for only that particular namepace 
+So if we have multiple namespaces defining rolebinding in multiple namepsaces will be a huge task so this can solved by using and for storage if we using persistance volume we cannot even add role binding to that. So there is way to give permissions to the cluster level that is cluster and clusterRole binding (That means we can access resource in any namespace)
+
+So similar to roles rolebinding we should do the same for cluster level
+
+
+------------ cluster-role.yaml -----------------
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pod-reader
+rules:
+- apiGroups: [""]
+  # at the HTTP level, the name of the resource for accessing Secret
+  # objects "secrets"
+  verbs: ["get", "watch", "list"]
+  resources: ["pods", "pods/log"]
+  
+kubectl apply 
+
+-------------- ClusterRoleBinding.yaml ----------------
+kind: ClusterRoleBinding
+metadata:
+  name: read-secrets-global
+subjects:
+  - kind: User
+    name: arjun # assigning to this user 
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: pod-reader # roleName
+  apiGroup: rbac.authorization.k8s.io
+
+# kubectl config get-contexts
+# kubectl config use-context arjun-context
+# kubectl get pods -n arjun 
+minikube@e2e-81-105:~/rbac$ kubectl get pods
+NAME                                 READY   STATUS    RESTARTS   AGE
+python-deployment-656ffcbd4f-9twt8   1/1     Running   0          10d
+python-deployment-656ffcbd4f-c86nf   1/1     Running   0          10d
+minikube@e2e-81-105:~/rbac$ kubectl get pods -n arjun
+NAME    READY   STATUS    RESTARTS   AGE
+nginx   1/1     Running   0          123m
+
+--Now the arjun user can do the actions in any namespaces based on the provided roles
+
+--------------------------------- Assigning Groups in ClusterRoleBinding -----------------
+Note: Now this is working good but if we want to give the 100 users these permission again its a tedius process we can use groups (Groups of users)
+
+
+So Instead of giving usernames in the yaml giving Groupname is recommended 
+
+GroupName is giving when creating the user: 
+We creatd this in Step 2: Create the certificate signing request for the user with the arjun.key 
+$ openssl req -new -key arjun.key -out arjun.csr -subj "/CN=arjun/O=dev/O=example.org" 
+
+Assgining Group in ClusterRoleBinding
+
+kind: ClusterRoleBinding
+metadata:
+  name: read-secrets-global
+subjects:
+  - kind: Group
+    name: dev # assigning to this Group  
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: pod-reader # roleName
+  apiGroup: rbac.authorization.k8s.io
+
+Now any user which is created with this group name will have correspding role access
+------------------------------------------------------------------------
+
+
+====================== Service Accounts =================
+
+Service Accounts are special type of users we can them as application. When a namespace get created default service account will be created. Pods which will use this service accounts to authenticate to the apiserver if we dont mention explicitely pods will use this default service account. We can also create custom service accounts 
+
+$ kubectl get sa 
+NAME      SECRETS   AGE
+default   0         24d
+
+minikube@e2e-81-105:~/rbac$ kubectl get sa -n arjun
+NAME      SECRETS   AGE
+default   0         143m
+
+So Now if a pod/container needs access to pods inside the container it uses service accounts 
+if you login into a pod and try get pods it will use service account to authenticate to the apiserver and get the request the associated service account must have proper roles inorder to perform the actions 
+
+Example without creating a service account acccess a pod will lead to: 
+
+I have no name!@kubectl-pod:/$ kubectl get pods
+Error from server (Forbidden): pods is forbidden: User "system:serviceaccount:default:default" cannot list resource "pods" in API group "" in the namespace "default"
+
+Yaml 
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kubectl-pod
+spec:
+  containers:
+    - name: kubectl
+      image: bitnami/kubectl
+      command: ["sleep", "20000"]
+
+Inorder to make this work 
+1. Create a service account: $ kubectl create sa new-sa 
+$ kubectl get sa # defalut namespace
+	NAME      SECRETS   AGE
+	default   0         24d
+	new-sa    0         27m
+2. Congigure this in the pod definition
+	
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kubectl-pod
+spec:
+  serviceAccount: new-sa
+  containers:
+    - name: kubectl
+      image: bitnami/kubectl
+      command: ["sleep", "20000"]
+
+3. Now try to access the get pods inside the container 
+I have no name!@kubectl-pod:/$ kubectl get pods
+Error from server (Forbidden): pods is forbidden: User "system:serviceaccount:default:new-sa" cannot list resource "pods" in API group "" in the namespace "default"
+
+4. As you can see now it is trying with new-sa service account but the permission has been not set to the sa. Now give the role in roles and apply to make it work.
+apiVersion: rbac.authorization.k8s.io/v1
+
+kind: RoleBinding
+metadata:
+  name: read-pods
+subjects:
+- kind: User
+  name: arjun
+  apiGroup: rbac.authorization.k8s.io
+- kind: ServiceAccount
+  name: new-sa  ## add the created service account 
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+
+
+5. Now Try to get the pods  -It will work
+I have no name!@kubectl-pod:/$ kubectl get pods
+NAME                                 READY   STATUS    RESTARTS   AGE
+kubectl-pod                          1/1     Running   0          18m
+python-deployment-656ffcbd4f-9twt8   1/1     Running   0          10d
+python-deployment-656ffcbd4f-c86nf   1/1     Running   0          10d
+
+I have no name!@kubectl-pod:/$ kubectl auth can-i get pods
+yes
+I have no name!@kubectl-pod:/$ kubectl auth can-i create pods
+no
+
+Note: Each namespace will have differnt sa so create accordingly 
+
+
+
+=======================  END OF RBAC =================================================================================
+
+
+=========================== Probes in K8s =======================================================
+
+How does a kubernetes knows whethere a pod is running or not ? 
+
+Any application can be in unhealthy bug oom etc, It will be runnning by the looks of it but it will be not service the users correctly 
+
+Debugging is also tricky because the pod status shows running but we does'nt see the app is working properly 
+
+In the previous example where we running the mongo container. k8s just checks the main process which is mongod if this running then pod  will be running it does'nt go deep what is happening inside the container
+
+If you don’t add probes, Kubernetes won't know if your app is failing internally.
+
+
+That's when probe comes into the picture -> probe means examine thoroughly -> Investigate the pod whether they correctly working or not -> if not restart the container 
+
+
+Three different type 
+1. startupProbe: helps slow-starting apps
+2. livenessProbe: kills & restarts stuck apps
+3. readinessProbe: tells when app is ready to get traffic
+
+
+
+Liveness probe 
+By using this we can detect whether a pod is health or not by using the commands or network request to the containers if the liveness command gives the 1 = Failure, k8s assumes that the pod is unhealthy and it restarts the pod in short the liveness  probe ensure the health pods are running. We define this in the container level not the pod level  
+
+Probing Mechanisms:
+
+Probing Mechanisms:
+
++---------+-----------------------------------------------------+-------------------+-------------------------------+
+|         | Exec                                                | HTTP              | TCP                           |
++---------+-----------------------------------------------------+-------------------+-------------------------------+
+| Probe   | exec:                                               | httpGet:          | tcpSocket:                    |
+|         |   command:                                          |   path: /health   |   port: 8080                  |
+|         |     - mongo                                         |   port: 8080      |                               |
+|         |     - --eval                                        |                   |                               |
+|         |     - "db.adminCommand('ping')"                     |                   |                               |
++---------+-----------------------------------------------------+-------------------+-------------------------------+
+| Success | 0                                                   | 200-399           | If port accepts traffic       |
++---------+-----------------------------------------------------+-------------------+-------------------------------+
+| Failure | 1                                                   | Other than 200-399| If port can’t accept traffic  |
++---------+-----------------------------------------------------+-------------------+-------------------------------+
+
+🔧 Probing Customization in Kubernetes
++--------------------------+----------------------------------------------------------------------+-----------------+
+| Parameter                | Purpose                                                              | Default Value   |
+|--------------------------|----------------------------------------------------------------------|-----------------|
+| initialDelaySeconds      | Time to wait before running the probe for the first time             | 0 seconds       |
+| periodSeconds            | Time interval between each probe execution                           | 10 seconds      |
+| timeoutSeconds           | Timeout period to wait for a response before marking failure         | 1 second        |
+| failureThreshold         | Number of consecutive failures to consider the container unhealthy   | 3 times         |
+| successThreshold         | Number of consecutive successes to consider the container healthy    | 1 time (default)|
++--------------------------+----------------------------------------------------------------------+-----------------+
+✅ Example YAML:
+--------------------------------------------------------
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 5       # Wait 5s before first probe
+  periodSeconds: 10            # Run every 10s
+  timeoutSeconds: 2            # Wait 2s for response
+  failureThreshold: 3          # Restart after 3 failures
+--------------------------------------------------------
+
+💡 Notes:
+- Probes help Kubernetes decide if your app is healthy or ready.
+- You can use livenessProbe, readinessProbe, and startupProbe.
+- Proper tuning ensures your app restarts fast on real issues but not false alarms.
+
+Readiness probe 
+Difference between the liveness probe and readiness probe is whenever the liveness probe is triggerd the pod will be restarted 
+but the readiness probe is triggered it will remove the ip which is assined to the pod so that no traffic will come before the pod becomes running (Meaning it will removed from the endpoint list of the service)
+You can make the failure intentionaly by changing the db.adminCommand to db1.adminCommand (Anthing)
+
+
+Startup Probe 
+Provides the way to delay the liveness and readiness probe execution until the oontainer will be ready to handle 
+Meaning the liveness and readiness probe executes only when the startup probe will be success. If a container is failed in readiness then it is consideres as failure and it will restart the pods 
+
+The default restart policy is always -> we can change this by giving -> restartPolicy: Never/OnFailure/Always this can be giving in contianers spec
+This can be used when the application which we running may tale significant amount of time to start the conainter
+
+-------------------------
+Mongo-with-Probe.yaml
+-------------------------
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo
+spec:
+  selector:
+    matchLabels:
+      app: mongo
+  serviceName: "mongo"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+	  restartPolicy: Always # If we dont give the default will be always
+      containers:
+        - name: mongo
+          image: mongo:4.0.8
+          startupProbe:
+            exec:
+              command:
+                - mongo
+                - --eval
+                - "db.adminCommand('ping')"
+            initialDelaySeconds: 1
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 2
+          livenessProbe:
+            exec:
+              command:
+                - mongo
+                - --eval
+                - "db.adminCommand('ping')"
+            initialDelaySeconds: 1
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 2
+          readinessProbe:
+            exec:
+              command:
+                - mongo
+                - --eval
+                - "db.adminCommand('ping')"
+            initialDelaySeconds: 1
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 2
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  key: username
+                  name: mongodb-config
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: mongodb-secret
+          command:
+            - mongod
+            - "--bind_ip_all"
+            - --config=/etc/mongo/mongodb.conf
+          volumeMounts:
+            - name: mongo-volume
+              mountPath: /data/db
+            - name: mongodb-config
+              mountPath: /etc/mongo
+      volumes:
+        - name: mongodb-config
+          configMap:
+            name: mongodb-config
+            items:
+              - key: mongodb.conf
+                path: mongodb.conf
+  volumeClaimTemplates:
+    - metadata:
+        name: mongo-volume
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: demo-storage
+        resources:
+          requests:
+            storage: 1Gi
+
+
+
+                             +-----------------+
+                             |  Pod Scheduled  |
+                             +--------+--------+
+                                      |
+                           +----------v----------+
+                           | Startup Probe       |
+                           |      Success?       |
+                           +----------+----------+
+                                      |
+              +-----------------------+----------------------+
+              |                                              |
+        +-----v-----+                                  +-----v------+
+        |    Yes    |                                  |     No     |
+        +-----+-----+                                  +-----+------+
+              |                                              |
+  +-----------v-----------+                      +----------v----------+
+  |  Readiness Probe      |                      |   Is Last Attempt?  |
+  |      Success?         |                      +----------+----------+
+  +-----------+-----------+                                 |
+              |                                              |
+     +--------v--------+                          +----------v----------+
+     |      Yes        |                          |         Yes         |
+     +--------+--------+                          +----------+----------+
+              |                                              |
+  +-----------v-----------+                          +-------v--------+
+  |  Liveness Probe       |                          |   Pod Stopped  |
+  |      Success?         |                          +----------------+
+  +-----------+-----------+
+              |
+   +----------v----------+
+   |  Is Last Attempt?   |
+   +----------+----------+
+              |
+     +--------v--------+
+     |       Yes       |
+     +--------+--------+
+              |
+       +------v------+
+       | Restart Pod |
+       +-------------+
+
+
+✅ Best Practices for Probes
+✔ Ideal frequency -> Frequecy to check the health of the container
+✔ Lightweight -> don't add too many comamnds since it may slow the conatiner 
+✔ Correct Restart Policy -> If it restartPolicy: Never then the app will always in failure state
+✔ Use only when needed -> Dont use this for any simple app 
+✔ Keep an eye on Probes regularly -> when doing an upgrade or patching it may slow down the containe
+
+
+=============================== END OF PROBES ==========================================4
+
+
+======================== Resources Allocation in k8s ========================================
+
+So Each node we deploy will consume the mem and cpu resource. So we should limit the memory and other resources
+
+What to learn - 
+1. Requesting CPU AND Memory
+2. Limiting CPU And Memory 
+3. Quality of Service 
+4. Setting min, max and default resources for pods in namespace - LimitRange
+5. Limiting resources in a namespace  - ResourceQuota 
+
+Computing Resource 
++--------------------------------------------------------------------------------------------+
+|		CPU                       	 |					Memory 								|
++--------------------------------------------------------------------------------------------+
+Measured a fraction of time 					Measured in Bytes
+Ex: 200m(0.2cpu), cpu(1000m)					Ex: 1KB(1000bytes), 1KiB(1024 bytes)
+Compressible 									Ex: 1MB (1000KB), 1MiB(1024 Kib)
+Thottles										Not compressible
+1 CPU is equal to 								Termincates the process if it exceed the limit
+	1 vCPU in AWS 
+	1 Core in GCP
+	1 vCore in Azure
+	1 Hyperthread on bare-metal
+
+Requests: So for every container we are deploying we can request the cpu and memory and k8s ensure the pod is deployed where there is min resource avaialable to schedule the pod
+Limits: So for every contanier/pod we can set the maximum no of cpu and memory utlization by using the limits 
+If we dont specify this info then k8s dose'nt care about the pod usage and pod deployment to the correct node hence the cluster becomes unstable and application will perform bad 
+
+Stress is tool we can run a pod according to our utilization to test or benchmark. So it is available in the docker hub that is what we using beloew 
+
+
+Example: 
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: resources-demo
+spec:
+  containers:
+  - name: resources-demo
+    image: polinux/stress
+    command: ["stress"]
+    args: ["--cpu", "2", "--vm", "1", "--vm-bytes", "1G", "--vm-hang", "1"]
+    resources:
+      requests:
+        memory: "200Mi"
+        cpu: "1"
+	  limits: 
+		cpu: "2"
+		memory: "5Gi"
+
+Note: This we can set only for containers
+
+
+📌 What is args used for in a Kubernetes Pod?
+In Kubernetes YAML, the args field is used to pass command-line arguments to the container's entrypoint command.
+
+🔧 How command and args work together:
+Field	Purpose
+command	Overrides the default entrypoint of the container image
+args	Supplies arguments to the command or the container's default entrypoint
+
+🧠 What this command does:
+--cpu 2: Stress test 2 CPU workers.
+--vm 1: Launch 1 memory worker.
+--vm-bytes 1G: Each memory worker allocates 1 GB.
+--vm-hang 1: The memory worker holds the memory for 1 second before releasing.
+
+✅ If You Only Use args (no command)
+Then Kubernetes uses the container image's default entrypoint and passes these args to it.
+But in your case, you override the entrypoint using command: ["stress"] — so now the container will run exactly what you tell it.
+
+
+There is a command to view the requests and limits and other cluster info by using 
+$kubectl describe node minikube
+
+
+Note: K8s automatically assign classes to the pods that is called as  Quality of Service(QoS)
+ --> So when we request a container with the request limit that are equal it is considered as guaranteed and it will look to remove the pods which doe'snt have these config or the limit are not equal because it thinks that we are unbothered about the pod 
+ this will be considered as burstable category -> This happens when the request is more than the avaiable resource in the node. k8s always looks for unallocated space not for available space so that eventhough the pod might be using less resuorce it will make sure that it has the set no of resources are available.
+ 
+ You can check this by describing the pods 
+ $ kubectl describe pod resources-demo
+
+
+Volumes:
+  kube-api-access-8fhvc:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+QoS Class:                   Burstable     *********************
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+---------------------------------------------------
+LimitRange: We can specify the limits in which the pods get allocated both min and max utilization should be true then only the pods will be deployed. this can be applied at pod container pvc level 
+If we dont specify limits we can set default like below 
+
+Note: Note this is like a global config watever you are creating will based on this 
+
+--- LimitRange.yaml -----
+
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: limit-range
+spec:
+  limits: 
+    - type: Pod
+      min:
+        cpu: 50m
+        memory: 5Mi
+      max:
+        cpu: "2"
+        memory: 6Gi
+    - type: Container
+      defaultRequest:
+        cpu: 100m
+        memory: 10Mi
+      default:
+        cpu: 200m
+        memory: 100Mi
+      min:
+        cpu: 50m
+        memory: 5Mi
+      max:
+        cpu: "1"
+        memory: 5Gi
+      maxLimitRequestRatio: # CPu limit should be not be allowed to be more than 4 times greater than cpu req
+        cpu: "4"
+        memory: 10
+    - type: PersistentVolumeClaim
+      min:
+        storage: 1Gi
+      max:
+        storage: 10Gi
+
+
+LimitRange applis this for every pod but sometimes we need to apply it to the namespace level we can do that by using ResourceQuota
+
+We can limit requests, limits, no of pods, no of service etc 
+
+
+
+ResourceQuota.yaml 
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: resource-quota
+  namespace: dev  # if we dont specify this will get applied to default namespace 
+spec:
+  hard:
+    requests.cpu: 400m
+    requests.memory: 200Mi
+    limits.cpu: 2000m
+    limits.memory: 8Gi
+    pods: "10"
+    replicationcontrollers: "5"
+    secrets: "10"
+    configmaps: "10"
+    persistentvolumeclaims: "4"
+    services: "5"
+    services.loadbalancers: "1"
+    services.nodeports: "2"
+    # Only two PVCs can claim storage with the ssd StorageClass.
+    ssd.storageclass.storage.k8s.io/persistentvolumeclaims: "2"
+============= END OF RESOURCES ============================================================
+
+
+
+============ Advanced scheduling ==================================================================
+
+To learn: 
+1. nodeName
+2. nodeSelector
+3. Affinity
+4. Taints and Tolerations 
+
+The schedular look out the spec of our yaml and try to give the pod the best node to run. Also even if we dont specify the schedular works amazing in selecting the node 
+
+But there may be cases where we want to deploy the pod that is when schedular comes up 
+
+Simplest way is using nodeName 
+
+--------nodeName----------
+
+todo-ui-deployment.yaml 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-ui
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: todo-ui
+  template:
+    metadata:
+      name: todo-ui-pod
+      labels:
+        app: todo-ui
+    spec:
+      nodeName: minikube-m02
+      containers:
+        - name: todo-ui
+          image: pavanelthepu/todo-ui:1.0.2
+          ports:
+            - containerPort: 80
+          env:
+            - name: "REACT_APP_BACKEND_SERVER_URL"
+              value: "http://todo.com/api"
+
+----The deployment will be in the second node if we dont give this nodename k8s would deploy this into separate node
+
+
+---------- nodeSelector -----------------------
+We can create labels to the nodes and we can specify the same in the container spec 
+
+$kubectl label node minikube team=analytics
+$kubectl label node minikube-m03 team=analytics
+$kubectl get nodes --show-labels 
+$kubectl get nodes -l team=analytics
+
+minikube@e2e-81-105:~$ kubectl label node minikube team=analytics
+node/minikube labeled
+minikube@e2e-81-105:~$ kubectl get nodes --show-labels
+NAME       STATUS   ROLES           AGE   VERSION   LABELS
+minikube   Ready    control-plane   37d   v1.32.0   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=minikube,kubernetes.io/os=linux,minikube.k8s.io/commit=dd5d320e41b5451cdf3c01891bc4e13d189586ed-dirty,minikube.k8s.io/name=minikube,minikube.k8s.io/primary=true,minikube.k8s.io/updated_at=2025_05_13T12_05_11_0700,minikube.k8s.io/version=v1.35.0,node-role.kubernetes.io/control-plane=,node.kubernetes.io/exclude-from-external-load-balancers=,team=analytics
+minikube@e2e-81-105:~$ kubectl get nodes -l team=analytics
+NAME       STATUS   ROLES           AGE   VERSION
+minikube   Ready    control-plane   37d   v1.32.0
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-ui
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: todo-ui
+  template:
+    metadata:
+      name: todo-ui-pod
+      labels:
+        app: todo-ui
+    spec:
+     # nodeName: minikube-m02
+	 nodeSelector: 
+	   team: analytics # here the separator shuold be colon not = 
+      containers:
+        - name: todo-ui
+          image: pavanelthepu/todo-ui:1.0.2
+          ports:
+            - containerPort: 80
+          env:
+            - name: "REACT_APP_BACKEND_SERVER_URL"
+              value: "http://todo.com/api"
+
+
+--> now this will schedule in the 1st and 3rd node.
+
+-------- Affinity --------------------------------
+Alternative to NodeSelector but ensure the pods are scheduled to specific nodes with advanced operators
+
+There are two types: 
+
+1. NodeAffinity --> schedules pods based on operators and expressions
+		i. requiredDuringSchedulingIgnoredDuringExecution
+		ii. preferredDuringSchedulingIgnoredDuringExecution
+		
+2. PodAffinity ---> is used to co-locate the pods. Suppose if we want ui application to be deployed in the us-east-region and we want api application in the same region for the we should define the podAffinity. Aslo if we want to deploy these two separately in different regions 
+
+
+Example - 
+Affinity
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution: # Means when scheduling the node must have the label otherwise the pod will go to pending state, Ingore means it should not do anything to running pods even if the pods dont have the nodelabel 
+	  nodeSelectorTerms:
+	    - matchExpressions:
+		     -key: rank      # thid is the node 
+			 operator: Lt    #Less than - sql operators like 
+			 values: 
+			   - "5"		# choose a node which has label key as rank and value should be less than 5 
+
+
+
+----------- requiredDuringSchedulingIgnoredDuringExecution ----------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-ui
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: todo-ui
+  template:
+    metadata:
+      name: todo-ui-pod
+      labels:
+        app: todo-ui
+    spec:
+      # nodeName: minikube-m02
+      # nodeSelector:
+      #   team: analytics
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+             nodeSelectorTerms:
+               - matchExpressions:
+                   - key: rank
+                     operator: Lt
+                     values:
+                       - "5"
+      containers:
+        - name: todo-ui
+          image: pavanelthepu/todo-ui:1.0.2
+          ports:
+            - containerPort: 80
+          env:
+            - name: "REACT_APP_BACKEND_SERVER_URL"
+              value: "http://todo.com/api"
+
+
+
+--> Add the rank label for the node before applying. 
+
+kubectl label node minikube-m02 rank=3 
+kubectl label node minikube-03 rank=5 
+
+This two pods will scheduled in m02 because of rank. 03 has 5 rank it shuold be less than 5 as we have defined 
+
+-- Now even if we delete the label the pod will be not deleted because we have mentioned ignoreDuringExecution.
+
++-----------------------------------------------+
+|	  |	During Scheduling  |   During Execution |
+
+|Soft |	 Required 		   |		Ignored     |
+|Hard |	 Preferred 		   |		Ignored     | 
+-------------------------------------------------
+
+------------ preferredDuringSchedulingIgnoredDuringExecution --------------------
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-ui
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: todo-ui
+  template:
+    metadata:
+      name: todo-ui-pod
+      labels:
+        app: todo-ui
+    spec:
+      # nodeName: minikube-m02
+      # nodeSelector:
+      #   team: analytics
+      affinity:
+        nodeAffinity:
+          # requiredDuringSchedulingIgnoredDuringExecution:
+          #   nodeSelectorTerms:
+          #     - matchExpressions:
+          #         - key: rank
+          #           operator: Lt
+          #           values:
+          #             - "5"
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 40
+              preference:
+                matchExpressions:
+                - key: "team"
+                  operator: In
+                  values: ["analytics"]
+            - weight: 60
+              preference:
+                matchExpressions:
+                - key: "rank"
+                  operator: Gt
+                  values: ["4"]
+      containers:
+        - name: todo-ui
+          image: pavanelthepu/todo-ui:1.0.2
+          ports:
+            - containerPort: 80
+          env:
+            - name: "REACT_APP_BACKEND_SERVER_URL"
+              value: "http://todo.com/api"
+			  
+The prefferance is given here in based of wieghts so here in the second preference weight is 60 and the rank should be gt 4 so this will get scheduled in 3rd node 
+
+Note: if we specify both nodeSelector and affinity both should match then it will schedule the pods. If we have mulitple nodeslectors the pod will scheduled based on the nodeselectorterms. Where in we have multiple matchExpressions pod will be scheduled based on matchExpression only.
+
+------------------- Pod Affinity --------------------
+
+pod will be get attracted by the node which has the same key value or unattract based on the specification and operator we use
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-api
+  namespace: todo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: todo-api
+  template:
+    metadata:
+      name: todo-api-pod
+      labels:
+        app: todo-api
+    spec:
+      containers:
+        - name: todo-api
+          image: pavanelthepu/todo-api:1.0.2
+          ports:
+            - containerPort: 8082
+          env:
+            - name: "spring.data.mongodb.uri"
+              value: "mongodb+srv://root:321654@cluster0.p9jq2.mongodb.net/todo?retryWrites=true&w=majority"
+	   affinity:
+	     podAffinity:
+		   requierdDuringSchedulingIgnoredDuringExecution:
+		    - labelSelector:
+				matchExpression:
+				-key: app:
+				 operator: In
+				 values: 
+				 - "todo-ui"
+			   topologyKey: kubernetes.io/hostname --? this willl get the hostname of the pod
+
+---> So this will be scheduled where the todo-ui app is running 
+
+		affinity:
+	     podAntiAffinity:
+		   requierdDuringSchedulingIgnoredDuringExecution:
+		    - labelSelector:
+				matchExpression:
+				-key: app:
+				 operator: In
+				 values: 
+				 - "todo-ui"
+			   topologyKey: kubernetes.io/hostname --? this willl get the hostname of the pod
+
+--> This will not run where todo-ui app is running
+
+
+---------- Taints and Tolerations ---------------------
+
+Taint - Added onto node. Only pods which can tolerate this taint can be scheduled 
+taint effects- 
+	1. NoSchedule - Hard(Do not schedule pods if they can't tolerate)
+	2. PreferNoSchedule - Soft(Can be schduled if no other nodes are avaiable)
+	3. NoExecute - Strict (Delete running pods also if they can't tolerate newly added taint)
+
+Let us understand 
+
+Taints are the opposite -- they allow a node to repel a set of pods. Tolerations are applied to pods. Tolerations allow the scheduler to schedule pods with matching taints
+
+
+How to add taint to a node ?? 
+$ kubectl taint node minikube-m02 evn=production:NoExecute 
+								Taint	       Taint-effect 
+
+The pods which already running on the second node should be killed and it will be created in another node 
+To know the taints - kubectl describe node minikube 
+
+
+------ NoSchedule -------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: todo-api
+  template:
+    metadata:
+      name: todo-api-pod
+      labels:
+        app: todo-api
+    spec:
+      containers:
+        - name: todo-api
+          image: pavanelthepu/todo-api:1.0.2
+          ports:
+            - containerPort: 8082
+          env:
+            - name: "spring.data.mongodb.uri"
+              value: "mongodb+srv://root:321654@cluster0.p9jq2.mongodb.net/todo?retryWrites=true&w=majority" 
+      tolerations:              # so the pod should be tolerant to the taint then it will execute else it will go to pending state 
+        - key: "env"
+          operator: "Equal"
+          value: "production"
+          effect: "NoSchedule"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: rank
+                    operator: Lt
+                    values:
+                      - "5"
+ 
+Note: this will only effect the scheduling does not impact the running pods. now the pods will run on second node 
+
+
+------ PreferNoSchedule ------------------------
+
+$ kubectl taint node minikube-m03 env=production:PreferNoSchedule 
+
+Meaning if the pods can'nt tolerate any of the tainted nodes . It will schedule to the PreferNoSchedule. this is soft rule
+
+
+-------------------- SUMMARY -------------------------------------------- 
+1. nodeName: Simplest way to choose a node 
+2. nodeSelector: To choose nodes by node label
+3. affinity: For advanced options like Exists, Gt, Lt, In, etc..
+	i.nodeAffinity: To choose nodes
+	ii. podAffinity: To co-locate pods with pod labels topologyKey
+	iii. PodAntiAffinity: To keep away pods with pod labels topologyKey 
+Taint - Added onto node. Only pods which can tolerate this taint can be scheduled 
+	1. NoSchedule - Hard(Do not schedule pods if they can't tolerate)
+	2. PreferNoSchedule - Soft(Can be schduled if no other nodes are avaiable)
+	3. NoExecute - Strict (Delete running pods also if they can't tolerate newly added taint) 
+
+
+============================ END OF ADANCE SCHEDULING ===============================
+
+============================ Autoscaling ============================
+
+Manually scaling is tedios task so what we can we scale based on the important metrics 
+
+1. HPA (Horizontal pod Autoscalar) -> Increase the replica of the pods 
+2. VPA (Vertical Pod Autoscalar) -> Increase the resources of existing pod 
+3. CA (Cluster Autoscalar) -> Increase the number of nodes in the cluster 
+
+
+Horizontal pod Autoscalar 
+This is helpfull for unuassual traffic, any ecommerse website -> It shuold scale up and scale down based on the traffic 
+
+                          +---------------------+
+                          |    Metrics Server   |
+                          +---------------------+
+                                   ↑
+                         (Aggregate Metrics every 1m)
+                                   ↑
+                          +---------------------+
+                          |      Kubelet        |
+                          +---------------------+
+                                   ↑
+                        (Raw Metrics from cAdvisor)
+                                   ↑
+                      +------------------------+
+                      |        cAdvisor        |
+                      +------------------------+
+                             ↑           |
+            (Collect metrics every 10s)  |
+                             |           ↓
+                        +---------------------+
+                        |       Pod1          |
+                        |    (Deployment)     |
+                        +---------------------+
+
+Master Node Section:
+--------------------
+
+        +---------------------+
+        |      API Server     |
+        +---------------------+
+               ↑       |
+  (Expose      |       | Query
+  Metrics)     |       ↓
+        +---------------------+
+        |         HPA         |
+        +---------------------+
+             |      ↑
+             ↓      |
+         Calculate   (Every 15s)
+             ↓
+         Scale Pods
+
+
+
+⏱ Metrics Collection Timing Summary:
+| Component          | Operation                   | Interval   |
+| ------------------ | --------------------------- | ---------- |
+| **cAdvisor**       | Collect pod/container stats | every 10s  |
+| **Kubelet**        | Sends raw metrics           | continuous |
+| **Metrics Server** | Aggregates metrics          | every 1m   |
+| **HPA Controller** | Calculates scaling action   | every 15s  |
+
+-------- sample app -------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: utility-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: utility-api
+  template:
+    metadata:
+      name: utility-api-pod
+      labels:
+        app: utility-api
+    spec:
+      containers:
+        - name: utility-api
+          image: pavanelthepu/utility-api
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: 20Mi
+              cpu: "0.25"
+            limits:
+              memory: 400Mi
+              cpu: "1"
+apiVersion: v1
+kind: Service
+metadata:
+  name: utility-api-service
+spec:
+  selector:
+    app: utility-api
+  ports:
+    - port: 8080
+      targetPort: 8080			  
+
+traffic-generator.yaml		
+apiVersion: v1
+kind: Pod
+metadata:
+  name: traffic-generator
+spec:
+  containers:
+  - name: alpine
+    image: alpine
+    args:
+    - sleep
+    - "100000000"
+		
+----- hpa.yaml -----------------
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: utility-api
+spec:
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - resource:
+        name: cpu
+        target:
+          averageUtilization: 70
+          type: Utilization
+      type: Resource
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: utility-api
+
+This will scale down or up based on the utilzation --> refer wrk tool for simulation 
+
+
+---------------- Veritcal Pod AutoScaler -----------------
+
+Issues:
+More resources and not being used -> cose increase
+Less resources and fully used -> Performance Issues 
+
+
+               +------------+
+               |  Metrics   |
+               |  Server    |
+               +------------+
+                     ↑
+             (Read Metrics)
+                     ↑
+               +------------+
+               |    VPA     |
+               +------------+
+                     ↓
+             (Recommend Resources)
+                     ↓
+             +----------------+
+             |   Recommender  |
+             +----------------+
+                     ↓
+           If VPA is in Auto mode
+                     ↓
+              +--------------+
+              |   Pod1       |
+              | Deployment   |
+              +--------------+
+
+
+🧠 Summary of VPA Components:
+| Component          | Function                                       |
+| ------------------ | ---------------------------------------------- |
+| **Metrics Server** | Provides resource usage data (CPU, memory)     |
+| **VPA**            | Requests metrics and generates suggestions     |
+| **Recommender**    | Suggests updated resource requests/limits      |
+| **Pod**            | Gets updated resources **if auto mode** is set |
+
+🔄 VPA Modes:
+| Mode      | Behavior                                    				            |	
+| --------- | ----------------------------------------------------------------------|
+| `Auto`    | Applies recommendations and restarts pods   			                |
+| `Initial` | Sets resources only during pod creation - applies to the new pods     |
+| `Off`     | Only monitors and recommends, doesn’t apply 							|
+
+vpa.yaml 
+
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: utility-api
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: utility-api
+  updatePolicy:
+    updateMode: "Off"  -- preffered in production
+
+To install verticalpodautoscaler -> git clone https://github.com/kubernetes/autoscalar.git
+cd autoscalar
+./vertical-pod-autoscalar/hack/vpa-up.sh
+
+
+$kubectl get vpa utility-api
+-- you can see the container recommendations
+
+----------------- Cluster Autoscaling -------------------
+
+1. Free up resources
+2. Adding a node manually 
+3. Let k8s handle -> 
+
+This will decided not on the resources but on how many podes and in unschedulable state then it will schedule A
+
+Cluster Autoscaler is a Kubernetes component that automatically adjusts the number of nodes (VMs) in your cluster based on the current demand. It adds or removes nodes to match the resource needs of unschedulable pods or underutilized nodes.
+
+🧠 What It Does (As per the diagram):
+Checks for Unschedulable Pods
+
+Example: If Pod4 can’t be scheduled due to lack of resources on Node1 and Node2, CA will step in.
+
+Thinks:
+
+🤔 “How many nodes are needed?”
+🤔 “What type of nodes are needed?”
+
+Makes Decisions:
+If a pod needs more memory/CPU and no current node can accommodate it → Add a node
+de is underutilized and all pods can be moved elsewhere → Remove the node
+
+⚙️ In the Diagram:
+Node 1: has Pod1 and Pod2
+Node 2: has Pod3
+CA (Cluster Autoscaler): checks cluster status and acts accordingly
+CA can:
+Add new nodes using:
+✅ AWS ➝ EC2 instances
+✅ Azure ➝ Virtual Machines
+✅ GCP ➝ Compute Engine
+Remove nodes when they’re no longer needed
+
+✅ Benefits of CA:
+Cost-Effective: Scales down unused nodes to save cost.
+Efficient: Ensures all pods get the resources they need.
+
+Autmatic: No manual intervention once configured.
+
+📌 Example Scenarios:
+| Scenario                                         | Cluster Autoscaler Action             |
+| ------------------------------------------------ | ------------------------------------- |
+| A new pod needs 2 CPUs but all nodes are full    | Adds a new node                       |
+| A node is underutilized (few small pods running) | Removes the node and reschedules pods |
+| All nodes are at optimal usage                   | Does nothing                          |
+
+🛠 How It Works Technically:
+Monitors the Kubernetes scheduler for pending pods.
+Communicates with cloud provider APIs to provision or delete VMs.
+Integrates with the Kubernetes API to update the cluster.
+
+
+
+
+============== DeamonSet pods =============================
+
+This is helpful in collecting logs and metrics since this runs on every node in the cluster. How do we make sure there this pod is created even on new noodes are created based on autoscaling 
+
+Use cases:
+fluentd
+Logstash 
+
+Monitoring: 
+Prometheus
+Datadog 
+
+
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter
+spec:
+  selector:
+    matchLabels:
+      app: node-exporter
+  template:
+    metadata:
+      labels:
+        app: node-exporter
+    spec:
+      # nodeSelector:
+      #   kubernetes.io/os: linux   suppose to run on a single node 
+      containers:
+      - name: node-exporter
+        image: prom/node-exporter:latest
+        args:
+          - --path.procfs=/host/proc
+          - --path.sysfs=/host/sys
+        ports:
+        - name: metrics
+          containerPort: 9100
+        volumeMounts:
+        - name: procfs
+          mountPath: /host/proc
+          readOnly: true
+        - name: sysfs
+          mountPath: /host/sys
+          readOnly: true
+      volumes:
+      - name: procfs
+        hostPath:
+          path: /proc
+      - name: sysfs
+        hostPath:
+          path: /sys
+
+This will run on each node in the cluster if any the any node got delete the pod will garbaged 
+
+To see the metrics exposed by node-exporter 
+$ kubectl port-forward pod_name 9100:9100
+check localhost:9100/metrics
+
+$ kubectl get ds -A
+$ kubectl delete ds node-exporter --cascade=false  # To make sure that other pods that are managed by the deamonset are not deleted 
+
+
+========================= Jobs and Cronjobs in k8s ======================
+
+This comes into play when we have to run batch jobs and scheduling jobs / Cronjob
+
+
+------ Job Life Cycle -----------
+
+Example-job.yaml 
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: example-job
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: 50
+  completions: 3
+  parallelism: 2
+  ttlSecondsAfterFinished: 60 # delete job after 60 seconds aslo associated pods will be deleted
+  template:
+    spec:
+      containers:
+        - name: example-container
+          image: alpine
+          command: ["sh", "-c", "echo 'Started' && sleep 10 && exit 1"]
+
+When a job is created it crates the pod with image which is provided in the container spec. 
+If there are errors the job will try to restart the with a new pod according the setting provided in the yaml. The no of retriess can be give with the backofflimit. 
+
+1. Backofflimit: 
+If there are any issues in the running the container it tries to create new pod. If the job is  still fails k8s will mark the pod as BackoffLimitExceeded. The default is 6 
+
+2. activeDeadlineSeconds:
+ Maximum no the seconds the job can run it this exceed then it will marked as DeadlineExceeded error. This has more precedence than the backofflimit 
+
+3. completions:
+ It is like request replicas when the specified no of pods are reached the job will be marked as completed 
+
+4. parallelism:
+ It defines how the pods should be scheduled when running the job. if we give completions as 3. Two pods will be scheduled continously and one pod will scheduled individually 
+
+
+How to run as scheduled Basis Suppose we need to take a backup of Database every midnight: 
+
+------------ CronJob -----------------
+Run jobs which is scheduled based on time 
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: example-cron-job
+spec:
+  schedule: "* * * * *"
+  jobTemplate: 
+    spec:
+	  template: 
+		
+Use Cases: 
+DB Backups, Log Ratation, Data Processing etc 
+
+
+---------- DB Backup of k8s Using Job  -----------------
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongodb-backup-job
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 100
+  ttlSecondsAfterFinished: 60 # delete job after 60 seconds
+  template:
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo
+          command: ["/bin/sh", "-c"]
+          args:
+            [
+              'mongodump --uri "mongodb://test1:${MONGO_PASSWORD}@mongo-0.mongo.default.svc.cluster.local:27017,mongo-1.mongo.default.svc.cluster.local:27017,mongo-2.mongo.default.svc.cluster.local:27017/?replicaSet=rs0&readPreference=secondaryPreferred&authSource=admin&ssl=false" -o /usr/share/mongodump/$(date +"%d%m%Y-%H%M%S")',
+            ]
+          volumeMounts:
+            - mountPath: "/usr/share/mongodump/"
+              name: mongodump
+          env:
+            - name: MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: mongodb-secret
+      volumes:
+        - name: mongodump
+          persistentVolumeClaim:
+              claimName: mongodump
+      restartPolicy: Never
+
+
+Note: create pvc  and secretes before applying 
+Next: describe the pv get the host path : 
+minikube@e2e-81-105:~/jobs$ kubectl describe pv pvc-3fcb2ea7-25e5-4b82-86f1-bfb61d9e4b7d
+Name:            pvc-3fcb2ea7-25e5-4b82-86f1-bfb61d9e4b7d
+Labels:          <none>
+Annotations:     hostPathProvisionerIdentity: 469519ea-ec69-4068-b791-43c5c5939547
+                 pv.kubernetes.io/provisioned-by: k8s.io/minikube-hostpath
+Finalizers:      [kubernetes.io/pv-protection]
+StorageClass:    standard
+Status:          Bound
+Claim:           default/mongodump
+Reclaim Policy:  Delete
+Access Modes:    RWO
+VolumeMode:      Filesystem
+Capacity:        1Gi
+Node Affinity:   <none>
+Message:
+Source:
+    Type:          HostPath (bare host directory volume)
+    Path:          /tmp/hostpath-provisioner/default/mongodump
+    HostPathType:
+Events:            <none>
+
+$ minikube ssh 
+docker@minikube:~$ cd  /tmp/hostpath-provisioner/default/mongodump
+docker@minikube:/tmp/hostpath-provisioner/default/mongodump$ ls
+Here the dump should be stored 
+
+
+-------------- Cronjobs -------------------------
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mongodb-backup-cronjob
+spec:
+  schedule: "* * * * *"
+  concurrencyPolicy: Allow
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 60 # delete job after 60 seconds
+      template:
+        spec:
+          containers:
+            - name: mongodb
+              image: mongo
+              command: ["/bin/sh", "-c"]
+              args:
+                [
+                  'mongodump --uri "mongodb://test1:${MONGO_PASSWORD}@mongo-0.mongo.default.svc.cluster.local:27017,mongo-1.mongo.default.svc.cluster.local:27017,mongo-2.mongo.default.svc.cluster.local:27017/?replicaSet=rs0&readPreference=secondaryPreferred&authSource=admin&ssl=false" -o /usr/share/mongodump/$(date +"%d%m%Y-%H%M%S")',
+                ]
+              volumeMounts:
+                - mountPath: "/usr/share/mongodump/"
+                  name: mongodump
+              env:
+                - name: MONGO_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      key: password
+                      name: mongodb-secret
+          volumes:
+            - name: mongodump
+              persistentVolumeClaim:
+                claimName: mongodump
+          restartPolicy: Never
+
+$ kubectl get cj 
+
+============== Creating a pod with yml ===========================
+
+pod-definition.yml 
+======================================
+apiVersion: v1 
+kind: Pod
+
+metadata: 
+  name: myapp-pod
+  labels:
+     app: myapp
+     type: front-end
+spec: 
+  containers:
+  - name: nginx-container
+    image: nginx 
+
+
+Note: Maintain the indentation in every parameters metadata is a dictionary it can have list of objects, like child sub-childs and all the respective childs/parent should be on the same level
+
+
+====================================
+     Kind      |      Version
+====================================
+1. Pod 	       |	    v1
+2. Service     |        v1
+3. ReplicaSet  |       apps?v1
+4. Deployment  |       apps/v1
+
+Notes on the yml: 
+Under metadata Kubernetes always expects name with whaterever key/value pairs it is compatible with where under labels we can add any key value pairs 
+
+spec is a dictionary and  inside it it can contains list of conatiners (one/more)
+
+
+================== Create a pod command ===================
+
+$ kubectl create -f pod-definition.yml
+$ kubectl exec -it myapp-pod -- /bin/bash -- login into a pod 
+$ kubectl describe pod myapp-pod  -- describe a pod to get the details of the pod 
+
+
+============== Replica Sets =====================
+1. To reduce the app failures, Create a replica of the same pod so that it is highly available 
+2. Even if the single pod is down the replica set will bring up new pod so that it is highly available 
+3. To share the load also to other nodes replica set helps in providing highly available application 
+4. Pod runs one node at a time we cannot move running pod across the nodes / Stop running and move 
+5. kube-Scheduler decides which pod to run on which node (we can set it also)
+6. Replica set can also manage the pods which were not created as part of replica set 
+Ex: the pods which were created before the replica set creation the pods with the same name will be also considered as replica set
+ 
+
+vi replica.yml 
+=========== Replica set pod ===========
+apiVersion: apps/v1
+kind: ReplicaSet
+
+metadata: 
+  name: myapp-replicaset
+  labels:
+     app: myapp
+     type: front-end
+spec: 
+  template: #pod template to create a replica set (copy from the above conf without 		                                                        apiversion and kind )
+     metadata: 
+       name: myapp-pod
+       labels:
+          app: myapp
+          type: front-end
+     spec: 
+       containers:
+        - name: nginx-container
+          image: nginx 
+
+  replicas: 3 
+  selector: 
+      matchLabels:
+         type: front-end #the labels have to match with above pod definition and it will know only this pods it has to monitor
+
+===============================================
+
+$ kubectl get replicaset
+NAME               DESIRED   CURRENT   READY   AGE
+myapp-replicaset   3         3         1       17s
+
+$ kubectl get pods
+NAME                     READY   STATUS              RESTARTS   AGE
+myapp-replicaset-7vcvn   0/1     ContainerCreating   0          6s
+myapp-replicaset-g87wm   0/1     ContainerCreating   0          6s
+myapp-replicaset-w7z6r   0/1     ContainerCreating   0          6s
+
+========Scaling the replicas===============
+
+To update/Scale the replica set to 6
+Update in replica.yml 
+Then run command: kubectl replace -f replica.yml --- recommended 
+OR kubectl scale --replicas=6 -f replica  -- from the cmd without modifying the file
+OR kubectl scale --replicas=6 replicaset myapp-replicaset 
+
+Revised Commands: 
+$ kubectl create -f replica.yml
+$ kubectl get replicaset
+$ kubectl delete replicaset myapp-replicaset 
+$ kubectl replace -f replica.yml 
+$ kubectl scale --replicas=6 -f replica.yml 
+
+ 
+============== Deployments(Same as ReplicaSet with adv) ================
+
+* Used for rolling updates, rollbacks to an application 
+
+vi deployment.yml 
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata: 
+  name: myapp-deployment
+  labels:
+     app: myapp
+     type: front-end
+spec: 
+  template: #pod template to create a replica set (copy from the above conf without apiversion and kind )
+     metadata: 
+       name: myapp-pod
+       labels:
+          app: myapp
+          type: front-end
+     spec: 
+       containers:
+        - name: nginx-container
+          image: nginx 
+
+  replicas: 3 
+  selector: 
+      matchLabels:
+         type: front-end #the labels have to match with above pod definition and it will know only this pods it has to monitor
+
+============================================
+
+Commands
+kubectl create -f deployment-definition.yml
+kubectl get deployments
+kubectl get replicaset 
+kubect get pods 
+
+controlplane $ kubectl  get all
+NAME                         READY   STATUS    RESTARTS   AGE
+pod/myapp-replicaset-7vcvn   1/1     Running   0          21m
+pod/myapp-replicaset-g87wm   1/1     Running   0          21m
+pod/myapp-replicaset-w7z6r   1/1     Running   0          21m
+
+NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+service/kubernetes   ClusterIP   10.96.0.1    <none>        443/TCP   17d
+
+NAME                               READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/myapp-replicaset   3/3     3            3           89s
+
+NAME                               DESIRED   CURRENT   READY   AGE
+replicaset.apps/myapp-replicaset   3         3         3       21m
+
+
+============ To update an deployments such as image===================
+
+kubectl apply -f deployment.yml 
+kubectl set image deployemt/myapp-deployment \ nginx-container=nginx:1.9.1
+
+
+============ To create a service =======================
+Kubernetes assigns unique ips to each pod (Not static) so if in case the application inside the pods want to communicate to outside network/between the pods we can create service 
+Service allows communications between applications in kub cluster / also outside the cluster for end users
+
+Different Services 
+1. Cluster IP service: not exposed externally (Internally it can communicate)
+2. NodePort: The service exposes the application through port on the node and it allows external communication (Ex: expose externally for webserver service)
+3. load_balancer: provides load balance to our service. Ex: to distribute load on the web server on the cloud env (AWS, azure)
+
+====================== Cluster IP Service ===================
+The Same way how replicas identifies the pods to replicate using object type in yml 
+the same cluster ip service does this. 
+
+service-definition.yml
+apiVersion: v1
+kind: service  # default will be cluster IP 
+metadata: 
+   name: redis-db # name of the service 
+spec: 
+   type: ClusterIP
+   port: 
+      - targetPort: 6379 # on what port the application(redis-service) is listening on       
+        port: 6379 # which port the service itself is running/exposed on (Can be different)
+   selector: 
+      app:myapp 
+      name: redis-pod # pod names
+
+
+==================== Node port service ========================
+service-definition.yml 
+
+apiVersion: v1
+kind: Service
+metadata:
+   name: web-service 
+
+spec: 
+     type: NodePort
+     ports: 
+       - targetPort: 80 #[default value be as port]
+         port: 80         # mandatory 
+         nodePort: 3008 #[30000 TO 32767 is automatically allocated] value can be given manually
+     selector: 
+          app:myapp
+          type: front-end  # to link the pod 
+
+To create the service: kubectl create -f service-definition.yml 
+To get the services : kubectl get services | kubectl get svc 
+In real time scenario's the pods may be running on with 3 replicas on different/same  nodes so the using the labels(In selector) key name it know which pods services to expose. No additional configuration needs to be done in yml 
+It uses random algorithm to load balance the traffic 
+
+====================== Microservices Architecture =========================
+
+Sample application - voting application 
+
+End User                                                               End User
+    |                                                                     |
+    |        								  |
+voting-app(user votes cats or dogs) (webapp)                          result-app  (reads from postgress and reads the user)
+    |  python                                                               |      (node.js)
+
+in-memory-DB  			                                            db (Postgressql)  cats | dogs - rows are Stored in BD 
+  redis	       |	                                                    |                  1       0
+                                                                                               
+		               <-  Worker (app)   ->
+                                     .net (To update the total count of rows reading from redis)
+
+
+The Voting and result app should be exposed externally through NodePort service 
+Rest of the should communincate internally in the cluster 
+
+Docker images:
+1. Voting: kodekloud/examplevotingapp_vote:v1
+2. worker: kodekloud/examplevotingapp_worker:v1
+3. result-app: kodekloud/examplevotingapp_result:v1
+4. redis: redis 
+5. PostgreSQL: postgres
+
+===================== Deploying the microservice application through docker ============== 
+
+How to containarize the application using Docker (Assuming all the images for the above components are created)
+
+Goals: 
+1. Deploy containers
+2. Enable connectivity between applications and DB ie. containers
+3. Enable External access like allowing port 80 to listen to run web service 
+
+
+docker run -> docker run -d --name=redis redis
+              docker run -d --name=db postgres:9.4  
+              docker run -d --name=vote -p 5000:80 --link redis:redis voting-app 
+              docker run -d --name=result -p 5001:80  --link db:db result-app 
+              docker run -d --name=worker --link db:db redis:redis worker
+
+Now how to the each application communicate between themselves?? 
+--- using links but this deprecated and the support may be removed in docker 
+Due to Advanced docker swarm etc supports this so not reliable 
+
+===============================Deploying voting app in Kubernetes ==========================================================
+
+Steps:
+1. Deploy pods
+2. Create services (ClusterIP) (Communication inside the cluster)
+       i. Redis 
+       ii. DB 
+       iii. 
+3. Create Services (NodePort) (Communication outside the cluster)
+       i. voting-app
+       ii. result-app 
+
+=============== Voting-app.yml ========================
+apiVersion: v1
+kind: Pod
+metadata: 
+    name: voting-app-pod
+    labels: 
+       name: voting-app-pod
+       app: demo-voting-app 
+
+spec: 
+  containers:
+     - name: voting-app
+       image: kodekloud/examplevotingapp_vote:v1
+       ports: 
+         - containerPort: 80 
+        
+
+================= Result-app.yml =======================
+apiVersion: v1
+kind: Pod
+metadata: 
+    name: result-app-pod
+    labels: 
+       name: result-app-pod
+       app: demo-voting-app 
+
+spec: 
+  containers:
+     - name: result-app
+       image: kodekloud/examplevotingapp_result:v1
+       ports: 
+         - containerPort: 80 
+
+
+=================== Redis-pod.yml ========================
+
+apiVersion: v1
+kind: Pod
+metadata: 
+    name: redis-pod
+    labels: 
+       name: redis-pod
+       app: demo-voting-app 
+
+spec: 
+  containers:
+     - name: redis
+       image: redis
+       ports: 
+         - containerPort: 6379
+
+====================== Postgres-pod.yml ==============
+
+apiVersion: v1
+kind: Pod
+metadata:
+    name: postgres-pod
+    labels:
+       name: postgres-pod
+       app: demo-voting-app
+
+spec:
+  containers:
+     - name: postgres
+       image: postgres
+       ports:
+         - containerPort: 5432
+       env:
+         - name: POSTGRES_USER         # env cred should be not passed directly instead use Secret
+           value: "postgres"
+         - name: POSTGRES_PASSWORD
+           value: "postgres"
+
+================== Worker-pod.yml ======================
+
+apiVersion: v1
+kind: Pod
+metadata: 
+    name: worker-app-pod
+    labels: 
+       name: worker-app-pod
+       app: demo-voting-app 
+
+spec: 
+  containers:
+     - name: worker-app
+       image: kodekloud/examplevotingapp_worker:v1
+
+
+==================== Redis-service.yml - CluserIP Service Definition Files (Redis) ==============
+apiVersion: v1
+kind: Service
+metadata: 
+  name: redis
+  labels: 
+    name: redis-service
+    app: demo-voting-app 
+spec: 
+  ports: 
+     - port: 6379
+       targetPort: 6379
+  selector: 
+    name: worker-app-pod
+    app: demo-voting-app 
+
+================= Postgres.yml -> ClusterIP Service Definition Files (Postgres) ==============
+apiVersion: v1
+kind: Service
+metadata: 
+  name: db #(Worker app expects the name of the postres as db)
+  labels: 
+    name: postgres-service
+    app: demo-voting-app 
+spec: 
+  ports: 
+     - port: 5432
+       targetPort: 5432
+  selector: 
+    name: postgres-pod
+    app: demo-voting-app 
+ 
+
+
+======================== Voting-service.yml -> NodePort Service Definition (Voting-app)===============================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: voting-service
+  labels:
+    name: voting-service
+    app: demo-voting-app
+spec:
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30004
+  selector:
+    name: voting-app-pod
+    app: demo-voting-app
+
+
+========================== Result-service.yml -> NodePort Result Service - should be exposed externally outside the cluster ===================
+
+apiVersion: v1
+kind: Service
+metadata: 
+    name: result-service  # Ensure not to use capital letters here 
+    labels: 
+       name: result-service
+       app: demo-voting-app 
+
+spec: 
+  type: NodePort
+  ports: 
+   - port: 80
+     targetPort: 80 
+     nodePort: 30005
+  selector:
+       name: result-app-pod
+       app: demo-voting-app 
+
+
+ ==========================================================
+
+* To access the url of the service hosted in local browser
+$ minikube service voting-service --url 
+http:/ip:30004
+
+-------------------------------------------------
+The above created are pods with service yml to enable services
+
+**Summary: Just Deploying pods we cannot scale out out application also it may result in downtime if we need to upgrade suppose and image the pods has to be taken down to update the image
+**Solution: To resolve this we can deploy the app as a deployment.
+1. Deployments automatically sets the relicasets as needed and rolling updates and rollbacks are easy.
+Ex: we can set 3 replicas to all the pods for high availability 
+
+
+============================== voting-app-deploy.yml -> Deploying the app as deployment ========================
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata: 
+  name: voting-deploy
+  labels:
+     app: voting-app-deploy
+     type: demo-voting-app
+spec: 
+  replicas: 3 
+  selector: 
+      matchLabels:
+        name: voting-app-pod
+        app: demo-voting-app
+  
+  template: 
+    metadata: 
+      name: voting-app-pod
+      labels: 
+        name: voting-app-pod
+        app: demo-voting-app 
+
+    spec: 
+      containers:
+       - name: voting-app
+         image: kodekloud/examplevotingapp_vote:v1
+         ports: 
+          - containerPort: 80 
+
+========================== Redis-deploy-app.yml (deployment)=======================================
+
+vi redis-app-deploy.yml 
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata: 
+  name: redis-deploy
+  labels:
+     app: redis-deploy
+     type: demo-voting-app
+spec: 
+  replicas: 3 
+  selector: 
+      matchLabels:
+        name: redis-pod
+        app: demo-voting-app
+  
+  template: 
+    metadata: 
+      name: redis-pod
+      labels: 
+        name: redis-pod
+        app: demo-voting-app 
+
+    spec: 
+      containers:
+        - name: redis
+          image: redis
+          ports: 
+           - containerPort: 6379
+
+================================ Postres-deploy.yml (deployment)======================
+vi postres-app-deploy.yml 
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata: 
+  name: postgres-deploy
+  labels:
+     app: postgres-deploy
+     type: demo-voting-app
+spec: 
+  replicas: 3 
+  selector: 
+      matchLabels:
+        name: postgres-pod
+        app: demo-voting-app
+  
+  template: 
+    metadata:
+      name: postgres-pod
+      labels:
+        name: postgres-pod
+        app: demo-voting-app
+
+    spec:
+      containers:
+        - name: postgres
+          image: postgres
+          ports:
+           - containerPort: 5432
+          env:
+           - name: POSTGRES_USER                   
+             value: "postgres"
+           - name: POSTGRES_PASSWORD
+             value: "postgres"
+ 
+
+======================== Worker-service-deploy.yml (deployment) ===============
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata: 
+  name: worker-service-deploy
+  labels:
+     app: worker-service-deploy
+     type: demo-voting-app
+spec: 
+  replicas: 3 
+  selector: 
+      matchLabels:
+        name: worker-app-pod
+        app: demo-voting-app 
+  
+  template: 
+    metadata: 
+      name: worker-app-pod
+      labels: 
+        name: worker-app-pod
+        app: demo-voting-app 
+
+    spec: 
+      containers:
+       - name: worker-app
+         image: kodekloud/examplevotingapp_worker:v1
+
+    
+====================== Result-service-deploy.yml (deployment) ====================\
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata: 
+  name: result-service-deploy
+  labels:
+     app: result-service-deploy
+     type: demo-voting-app
+spec: 
+  replicas: 3 
+  selector: 
+      matchLabels:
+        name: result-app-pod
+        app: demo-voting-app 
+  
+  template: 
+    metadata: 
+      name: result-app-pod
+      labels: 
+        name: result-app-pod
+        app: demo-voting-app 
+ 
+    spec: 
+      containers:
+       - name: result-app
+         image: kodekloud/examplevotingapp_result:v1
+         ports: 
+           - containerPort: 80 
+
+=============================================
+** The above deplpoyments are created with service so that service handles communication between the pods and externally
+
+** Summary: Hence the scaling up of the application and updated are more easier with deployments when compared to creating services with pods.
+==============================================
+
+========================== Helm ==============================
+Managing all the object in the yml because so many files will be there suppose we should upgrade of the images it requires a lot of changes in the deployment file and rollback if needed 
+Helm is a package manager for Kubernetes that simplifies deploying and managing applications by using "charts." A Helm chart is essentially a collection of files that describe a set of Kubernetes resources. These resources can be customized with values, making it easy to deploy applications with different configurations across environments.
+
+So Helm is like a package manager which takes care of this burden tasks it just takes care an app as an app instead of collection of objects 
+
+Key Components of a Helm Chart
+Chart.yaml: Contains metadata about the chart, like its name, version, and description.
+values.yaml: Provides default configuration values that can be overridden.
+templates/: Contains template files that generate Kubernetes manifests based on values.yaml.
+
+Basic Example: Deploying a Simple Web Application with Helm
+Let’s create a basic example to deploy an Nginx application using Helm.
+
+Step 1: Create a New Helm Chart
+First, create a Helm chart:
+
+helm create my-nginx
+This will generate a directory structure like this:
+
+markdown
+Copy code
+my-nginx/
+├── Chart.yaml
+├── values.yaml
+└── templates/
+    ├── deployment.yaml
+    ├── service.yaml
+Step 2: Customize the Chart
+Edit values.yaml to define the default values. For example, set the container image and replica count:
+
+yaml
+
+# values.yaml
+replicaCount: 2
+
+image:
+  repository: nginx
+  pullPolicy: IfNotPresent
+  tag: "1.19.0"
+
+service:
+  type: ClusterIP
+  port: 80
+Step 3: Define the Deployment and Service Templates
+The templates/deployment.yaml file is a Kubernetes manifest template that uses values from values.yaml. Here's a simple example:
+
+yaml
+Copy code
+# templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: 80
+This template will substitute variables like {{ .Chart.Name }} and {{ .Values.replicaCount }} with values defined in Chart.yaml and values.yaml, respectively.
+
+Step 4: Install the Helm Chart
+To deploy the application, use the helm install command:
+
+bash
+Copy code
+helm install my-nginx ./my-nginx
+This command deploys the resources defined in the Helm chart to your Kubernetes cluster.
+
+Step 5: View the Deployed Resources
+Check the created pods and service:
+
+bash
+Copy code
+kubectl get pods
+kubectl get svc
+Updating the Release
+If you want to update the application, modify values.yaml (for example, change replicaCount: 3) and then use:
+
+bash
+Copy code
+helm upgrade my-nginx ./my-nginx
+Summary
+Helm allows you to create reusable, configurable, and manageable deployments by using charts. Through template files, it helps generate Kubernetes manifests that can be customized by values, making it ideal for managing deployments across different environments.
+
+
+Helm -> package manager of kubernetes
+it can change objects just by providing what need to be changed in the files 
+
+$ helm install wordpress 
+$ helm upgrade wordpress: where we specify objects what need to changes it will handle in all other files 
+$ helm rollback wordpress
+$ helm uninstall wordpress
+
+To invoke 
+$ helm 
+$ helm repo
+4 helm search hub wordpress 
+
+Launch a wordpress app 
+
+
+================================================================
+Checking Kubernetes version - kubectl version --short
+Checking Kubernetes services - kubectl get pods -n kube-system -o wide
+Checking the namespaces - kubectl get namespace
+Setting the label - kubectl label node <node-name> timescaledb="True"
+Status of the nodes - kubectl get nodes -n vsmaps
+Status of jobs - kubectl get jobs -n vsmaps
+List of services installed - kubectl get svc -n vsmaps
+Name of the helm chart deployed - helm ls -n vsmaps
+Status of the pods - kubectl get pods -n vsmaps
+Complete status of the pods - kubectl get pods -n vsmaps -o wide
+Login to a pod - kubectl exec -it <pod name> bash -n vsmaps
+Describe a pod - kubectl describe pods/<pod name> -n vsmaps
+Logs of a container - kubectl logs -f <pod name> -n vsmaps -c <container name>
+Logs of a pod - kubectl logs -f <pod name> -n vsmaps
+List of setup configs - kubectl get cm -n vsmaps
+Edit setup configs - kubectl edit cm <config> -n vsmaps
+List of deployments - kubectl get deployment -n vsmaps
+Image of all the services - sudo crictl image ls
+Status of deployed pods - kubectl get deploy -n vsmaps
+Check the image deployed - kubectl edit deployments.apps denver-denver -n vsmaps
+helm uninstall kafka-cluster -n vsmaps 
+helm install kafka-cluster . -n vsmaps

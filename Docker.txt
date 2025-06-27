@@ -1,0 +1,1004 @@
+----------- Docker -----------------
+
+Docker is used to ship the application in a container that can be deployed anywhere without worrying about os, dependencies and other things also docker container is light weight. So we should package the app as an image using the docker file then we can run the container exposing the port which container is running on. 
+
+
+============= Docker Architecture ===============
+
+                 +-------------------------------+
+                 |        Docker CLI / API       |
+                 +-------------------------------+
+                              |
+                              v
+                 +-------------------------------+
+                 |       Docker Daemon (dockerd) |
+                 |  - Builds, runs, manages       |
+                 |  - Talks to container runtime  |
+                 +-------------------------------+
+                              |
+                              v
+                 +-------------------------------+
+                 |      Container Runtime        |
+                 |     (e.g. containerd)         |
+                 +-------------------------------+
+                              |
+                              v
+        +---------------------+----------------------+
+        |                    |                      |
+        v                    v                      v
++---------------+    +---------------+      +-----------------+
+|   Container 1 |    |  Container 2  |  ... |   Container N   |
++---------------+    +---------------+      +-----------------+
+
+        (Containers run isolated apps from Docker images)
+
+
+          +-------------------------------------+
+          |       Docker Image Registry         |
+          |     (Docker Hub / Custom Registry)  |
+          +-------------------------------------+
+
+Docker Daemon pulls/pushes images from/to the registry
+
+🔧 Visual flow:
+
+docker CLI
+   |
+   v
+dockerd (Docker Daemon)
+   |
+   v
+containerd
+   |
+   v
+runc  --> Linux kernel (namespaces, cgroups)
+   |
+   v
+Running container
+- Docker is made of Docker CLI + Docker Daemon.
+- Docker Daemon uses containerd to manage containers.
+- containerd uses runc to actually start containers via Linux kernel features.
+- This layered approach helps standardize and integrate with Kubernetes.
+
+
+.
+
+🔍 Here's how it works step-by-step:
+You run a Docker command:
+
+
+$$ docker run nginx
+That command goes to the Docker Daemon (dockerd):
+The Docker Daemon is the brain — it handles what needs to be done.
+The Docker Daemon delegates container-related tasks to containerd:
+containerd is a container runtime — it handles creating, running, stopping containers.
+It works behind the scenes.
+containerd then uses another low-level runtime called runc:
+runc actually talks to the Linux kernel to set up namespaces, cgroups, etc.
+
+
+Notes: 
+- Container: A lightweight, isolated environment to run apps.
+- Docker: A tool to build and manage containers.
+- Docker uses containerd to run containers.
+- You can run containers without Docker using other tools like Podman or containerd directly.
+
+
+✅ Here’s a quick comparison table:
+
+| Tool           | What It Does                                | CLI?  | Daemon? | Used By                                     |
+| -------------- | ------------------------------------------- | ----- | ------- | ------------------------------------------- |
+| **Docker**     | Full container lifecycle (build, run, push) | ✅ Yes | ✅ Yes   | Devs, local dev, legacy CI/CD               |
+| **containerd** | Low-level container runtime manager         | ❌ No  | ✅ Yes   | Used under the hood (by Docker, Kubernetes) |
+| **CRI-O**      | Kubernetes-specific container runtime       | ❌ No  | ✅ Yes   | Used by OpenShift / Kubernetes              |
+| **Podman**     | Docker-compatible CLI with no daemon        | ✅ Yes | ❌ No    | Devs, Rootless containers                   |
+
+Note: When a container is created its gets an ip automatically 
+
+Basic Docker Commands: 
+1. Docker pull nginx
+2. docker pull nginx:1.20 
+3. docker images 
+4. docker run -d nginx
+5. docker ps -a  
+6. docker run -d nginx:1.20 -p 80:80 nginx  ->  hostport:containerport
+--> Mapping 80 port of the container to the host ip. Now when we access localhost:80 the traffic will be sent to the container 
+--> you cannot map the same port to two differnt container suppose you want to run two nginx you should map to a diffent host port 
+7. docker run -d nginx -p 90:80 --> localhost:90
+8. docker stop containerids . .. . 
+9. docker rm containerid -> Remove the container 
+10. docker ps -a 
+11. docker run --name test -d nginx -> to give the name to a container otherwise default name will be given 
+12. docker test nginx-container --> this is rename the container
+13. docker start nginx-container --> to start the container if it was stopped 
+14. docker rmi imageID 
+15. docker --help -> to see the options 
+
+
+================ Docker Networks ====================
+
+To understand docker networks by setting up mongo DB 
+
+$ docker run -e MONGO_INIT_ROOT_USERNAME=root -e MONGO_INITDB_ROOT_PASSWORD=password -p 27017 -d mongo:4.4.6
+Option e is to add the environment variables which can be used inside the container
+
+To interacting with DB we can install mongo-express by below commands: 
+$ docker run -e  ME_CONFIG_MONGODB_ADMINNUSERNAME=root -e ME_CONFIG_MONGODB_ADMINPASSWORD=password -e ME_CONFIG_MONGODB_SERVER=localhost -p 8081:8081 mongo-express 
+
+This will not work beacuse it will be able to connect to the db beacause we have localhsot. As we learnt before each container will its ip address so get the IP address and update the same while runing the container
+
+Access Mongo-express localhost:8081
+To check logs -> docker logs containerid
+
+$ docker ps -a 
+$ docker inspect containerID | grep IPAdress -> to get the IP address of an container
+$ docker rm containerID
+$ docker run -e  ME_CONFIG_MONGODB_ADMINNUSERNAME=root -e ME_CONFIG_MONGODB_ADMINPASSWORD=password -e ME_CONFIG_MONGODB_SERVER=172.17.9.0.2 -p 8081:8081 mongo-express 
+$ localhost: 8081 --> Now if you access the ui but this is not the best practices the IP will change when we restart the container 
+
+-------- What if there is way to refer the mongodb with the containerName instead IP?? ---
+
+
+====== None Network ===================
+
+minikube@e2e-81-105:~/jobs$ docker network ls
+NETWORK ID     NAME       DRIVER    SCOPE
+4195ea4c372d   bridge     bridge    local
+06d1492d21da   host       host      local
+25470b8c4cd9   minikube   bridge    local
+290d15378907   none       null      local
+
+If you run any container in none network you cannot access outside the network let see how by running the alpine -> this is lighweight image of linix of 5 mb 
+
+$ docker run -d --network none alpine 
+$ docker ps -a 
+minikube@e2e-81-105:~/jobs$ docker ps -a
+CONTAINER ID   IMAGE                                 COMMAND                  CREATED          STATUS                      PORTS                                                                                                                                  NAMES
+5d3da1aa6b1a   alpine                                "/bin/sh"                27 seconds ago   Exited (0) 26 seconds ago                                                                                                                                          ecstatic_hypatia
+Note: Why is exited means the purpose of running container is to not run any os but to run applicaitons, service(As in any process or commands) when there is no service in the container it will exit immediately 
+
+$ docker run -d --network none alpine sleep 500
+CONTAINER ID   IMAGE                                 COMMAND                  CREATED         STATUS         PORTS                                                                                                                                  NAMES
+94a40a4c3f53   alpine                                "sleep 500"              4 seconds ago   Up 3 seconds                       
+
+$ docker exec -it container sh
+minikube@e2e-81-105:~/jobs$ docker exec -it 94a40a4c3f53 -- sh
+OCI runtime exec failed: exec failed: unable to start container process: exec: "--": executable file not found in $PATH: unknown
+minikube@e2e-81-105:~/jobs$ docker exec -it 94a40a4c3f53 bash
+OCI runtime exec failed: exec failed: unable to start container process: exec: "bash": executable file not found in $PATH: unknown
+minikube@e2e-81-105:~/jobs$ docker exec -it 94a40a4c3f53 /bin/bash
+
+minikube@e2e-81-105:~/jobs$ docker exec -it 94a40a4c3f53 sh
+/ # ls
+bin    etc    lib    mnt    proc   run    srv    tmp    var
+dev    home   media  opt    root   sbin   sys    usr
+/ # ping 8.8.8.8
+PING 8.8.8.8 (8.8.8.8): 56 data bytes
+ping: sendto: Network unreachable
+/ #
+
+Summary: So when we run a container in none network we cannot access anything outside so how to do access ?? 
+
+
+============= Bridge Network ===================
+
+Let us run the same container in bridge network even when we dont specify the network default it will added to the bridge network. 
+
+
+$ docker run --network bridge -d alpine sleep 500 
+minikube@e2e-81-105:~/jobs$ docker exec -it 98a4e1bee360 sh
+/ # ping 8.8.8.8
+PING 8.8.8.8 (8.8.8.8): 56 data bytes
+64 bytes from 8.8.8.8: seq=0 ttl=117 time=2.828 ms
+64 bytes from 8.8.8.8: seq=1 ttl=117 time=2.784 ms
+^C
+--- 8.8.8.8 ping statistics ---
+2 packets transmitted, 2 packets received, 0% packet loss
+round-trip min/avg/max = 2.784/2.806/2.828 ms
+
+Summary: So we can access Alpine, mongodb container, mongo Express Container can connect in the bridge network through the container IP which is provided by the docker.
+
+--- Now how to communicate through container names we should create the custom bridge network
+Note: We can only create custom bridge network not any other network
+
+
+=========== Creating a custom Network ================================
+$ docker network create mongo-net --driver bridge # default will be bridge 
+
+minikube@e2e-81-105:~/jobs$ docker network ls
+NETWORK ID     NAME        DRIVER    SCOPE
+4195ea4c372d   bridge      bridge    local
+06d1492d21da   host        host      local
+25470b8c4cd9   minikube    bridge    local
+74f8f9286c8d   mongo-net   bridge    local
+290d15378907   none        null      local
+
+$ docker stop $(docker ps -aq) # to stop all the containers at once q will give just the ID
+98a4e1bee360
+5d3da1aa6b1a
+515beda710e5
+e078cee0da24
+8d0752dc4d4f
+84d74d154953
+4ec981ed806d
+c699109c1933
+
+Running MongoDB 
+$ docker run -e MONGO_INIT_ROOT_USERNAME=root -e MONGO_INITDB_ROOT_PASSWORD=password -p 27017 -d mongo:4.4.6 --network mongo-net --name mongodb
+
+Running Mongo-express
+$ docker run -e  ME_CONFIG_MONGODB_ADMINNUSERNAME=root -e ME_CONFIG_MONGODB_ADMINPASSWORD=password -e ME_CONFIG_MONGODB_SERVER=mongodb -p 8081:8081 mongo-express --net mongo-net --name mongo-express
+
+
+Unable to find image 'mongo:4.4.6' locally
+4.4.6: Pulling from library/mongo
+e7ae86ffe2df: Pull complete
+cb44957d0c54: Pull complete
+1b034681f705: Pull complete
+f68a0696c1b2: Pull complete
+e7e03afd9141: Pull complete
+a4a217eed0e5: Pull complete
+af2e1e83b32e: Pull complete
+1a263184825b: Pull complete
+8cadecd5d9b5: Pull complete
+a0b5b7c565dc: Pull complete
+Digest: sha256:6efa052039903e731e4a5550c68a13c4869ddc93742c716332883fd9c77eb79b
+Status: Downloaded newer image for mongo:4.4.6
+bb0a27a23f906f9fe15b9609824baac7ef86f3f0f350ad510ad93628d1c2c428
+
+
+minikube@e2e-81-105:~$ docker ps -a
+CONTAINER ID   IMAGE                                 COMMAND                  CREATED          STATUS                       PORTS      NAMES
+b4460ec0284d   mongo-express                         "/sbin/tini -- /dock…"   56 seconds ago   Exited (2) 54 seconds ago               eager_nightingale
+1bc60091ae15   mongo:4.4.6                           "docker-entrypoint.s…"   2 minutes ago    Exited (1) 2 minutes ago                eager_cori
+
+
+
+=============== HOST Network ==================
+
+When we create container in host network we can access anything from the container similar to bridge 
+
+
+
+🧭 Overview of Docker Network Modes
+
+| Network Mode         | Container IP        | Host Port Mapping                            | Container Isolation          | Use Case                                          |
+| -------------------- | ------------------- | -------------------------------------------- | ---------------------------- | ------------------------------------------------- |
+| **bridge** (default) | ✅ Own IP (NAT)      | ✅ Required (via `-p`)                        | ✅ Isolated                   | General use, port-mapping to host                 |
+| **host**             | ❌ No separate IP    | ❌ No need for `-p`, uses host ports directly | ❌ Shared with host           | Performance-critical apps (like monitoring tools) |
+| **none**             | ❌ No network access | ❌ Not reachable                              | ✅ Fully isolated             | Debugging, air-gapped container                   |
+| **custom bridge**    | ✅ Own IP            | ✅ Required (via `-p`) or use container names | ✅ Isolated + name resolution | Multi-container apps needing inter-communication  |
+
+
+
+============ How to build a custom image ?? =====================
+
+To build an image we should create dockerfile then we can share the image in the docker hub 
+dockerfile is incase sensitive. it is advised to write in upper letter to distinguish from the environmental variables which we may pass. 
+
+
+Writing a dockerfile for a springboot application 
+1. So we will having a jar file already which will be used to run the springboot app 
+
+2. Create a DockerFile # No extentions to provide only thing that dockerdaemon cares is instructions 
+
+============= DockerFile ============================
+
+#Download Java 
+FROM openjdk:18-jdk 
+
+#copy the jar from local to image : COPY <source> <destination>
+# We can use ADD as well, by using ADD we can use url's which will be downloaded into the image and handle .tar.gz
+COPY target/todo-1.0.0.jar todo-1.0.0.jar
+
+# Run applicatioon with java -jar 
+ENTRYPOINT ["java", "-jar", "todo-1.0.0.jar"]
+=====================================================
+$ docker build -t todo-api:1.0 .
+
+
+
+What if we want to pass differnt version of jdk when running the container ? -- We can do this by Using Arguments
+ 
+================ DockerFile with Argument, ENV variables , Custom Dir inside container, AND Working Dir ==============
+
+#Download Java 
+
+ARG JAVA_VERSION="18-jdk"  # defult if we dont pass any 
+FROM openjdk:${JAVA_VERSION}
+
+LABEL version="1.0.0"
+
+# Copy the jar from local to image : COPY <source> <destination>
+# We can use ADD as well, by using ADD we can use url's which will be downloaded into the image and handle .tar.gz
+
+ARG APP_HOME=/app/dev/
+
+RUN mkdir ${APP_HOME}
+COPY target/todo-1.0.0.jar ${APP_HOME}/todo-1.0.0.jar #this will copy in the root dir of the application
+
+# Environmental variables 
+# ARG spring.data.mongodb.host=${container_name} pass as arg here or pass with -e when creating the container
+ENV PROJECT_NAME="todo-api" # This can be accessed inside the container. If it is of the same name of arg this will take thee priority. We can override with by using -e while running the container
+
+WORKDIR ${APP_HOME}
+
+# Run applicatioon with java -jar 
+ENTRYPOINT ["java", "-jar", "todo-1.0.0.jar"] #--> if Workdir is not provided should use /app/dev/todo-1.0.0.jar
+
+EXPOSE 8080 # Port exposed by the container 
+======================================================================================================================
+$ docker build -t todo-api:1.0.2 . 
+$ docker images
+$ docker run -it -p 8080:8080 -d -e srping.data.mongodb.host=mongo --net mongo-net todo-api:1.0.2
+
+============================================================
+📝 Dockerfile Notes — Java Spring Boot App (Advanced)
+============================================================
+
+------------------------------------------------------------
+🔹 ARG vs ENV — Pre-build vs Runtime Variables
+------------------------------------------------------------
+
+ARG JAVA_VERSION="18-jdk"
+FROM openjdk:${JAVA_VERSION}
+
+- ARG is available only during the image **build time**
+- We use it here to set Java version dynamically
+- You can override it during build:
+  docker build --build-arg JAVA_VERSION=17-jdk -t todo-api:1.0.2 .
+
+LABEL version="1.0.0"
+- Adds metadata to the image (not used by runtime)
+
+------------------------------------------------------------
+📁 Application Directory & JAR Setup
+------------------------------------------------------------
+
+ARG APP_HOME=/app/dev/
+RUN mkdir ${APP_HOME}
+
+COPY target/todo-1.0.0.jar ${APP_HOME}/todo-1.0.0.jar
+
+- Copies the built JAR file into the image under the specified app directory
+- COPY is preferred over ADD unless you need URL downloads or .tar.gz extraction
+
+------------------------------------------------------------
+🌱 ENV Variables (Runtime config)
+------------------------------------------------------------
+
+ENV PROJECT_NAME="todo-api"
+
+- Available **inside the container during runtime**
+- You can override it while running the container:
+  docker run -e PROJECT_NAME=my-new-app todo-api:1.0.2
+
+ARG spring.data.mongodb.host=mongo
+- ARGs can be passed during build, ENV during run
+
+💡 If ARG and ENV have same name, ENV overrides ARG inside container
+
+------------------------------------------------------------
+📂 WORKDIR — Set working directory inside container
+------------------------------------------------------------
+
+WORKDIR ${APP_HOME}
+
+- All subsequent commands (like ENTRYPOINT) are relative to this path
+- Avoids full path usage in ENTRYPOINT/CMD
+
+------------------------------------------------------------
+▶️ ENTRYPOINT — Run the App
+------------------------------------------------------------
+
+ENTRYPOINT ["java", "-jar", "todo-1.0.0.jar"]
+
+- When the container starts, it will run this Java command
+- Uses WORKDIR so no need to write full path to JAR
+
+------------------------------------------------------------
+📢 EXPOSE — Document the Port
+------------------------------------------------------------
+
+EXPOSE 8080
+
+- Does **not** actually publish the port — just a documentation hint
+- You still need to map with `-p` when running the container
+
+------------------------------------------------------------
+🚀 Build & Run Commands
+------------------------------------------------------------
+
+1. 🔧 Build the Image:
+   docker build -t todo-api:1.0.2 .
+
+2. 📦 View the Image:
+   docker images
+
+3. ▶️ Run the Container:
+   docker run -it -p 8080:8080 -d \
+     -e spring.data.mongodb.host=mongo \
+     --net mongo-net \
+     todo-api:1.0.2
+
+   - `-e` sets environment variable for DB host
+   - `--net` connects to Docker network (e.g. with Mongo container)
+   - `-d` detached mode
+   - `-p` maps container port to host port
+
+------------------------------------------------------------
+🔄 Recap — ARG vs ENV
+------------------------------------------------------------
+
+| Feature | ARG                         | ENV                      |
+|---------|-----------------------------|---------------------------|
+| Scope   | Build-time only             | Runtime                  |
+| Default | Can be set in Dockerfile    | Can be set in Dockerfile |
+| Override | --build-arg on build       | -e on `docker run`       |
+
+------------------------------------------------------------
+🧠 TL;DR Summary
+------------------------------------------------------------
+
+- Use `ARG` for build-time configs like base image or folder
+- Use `ENV` for runtime config like DB host, project name
+- Use `WORKDIR` to simplify paths
+- Use `ENTRYPOINT` to run your app
+- Use `EXPOSE` to document container’s open port
+- Run with `-e`, `-p`, `--net` to customize behavior
+
+============================================================
+
+
+###############################################
+# 🐳 Dockerfile Examples for Common Applications
+###############################################
+
+# 1️⃣ - Java (Spring Boot / JAR file)
+# ----------------------------------
+# Build your JAR using Maven/Gradle first (outside Docker).
+# Example: mvn clean package
+
+FROM openjdk:17-jdk-alpine
+COPY target/app.jar /app/app.jar
+WORKDIR /app
+ENTRYPOINT ["java", "-jar", "app.jar"]
+EXPOSE 8080
+
+# Build: docker build -t my-java-app .
+# Run:   docker run -p 8080:8080 my-java-app
+
+
+# 2️⃣ - Node.js (Backend API or Server)
+# -------------------------------------
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3000
+CMD ["node", "index.js"]
+
+# Build: docker build -t my-node-app .
+# Run:   docker run -p 3000:3000 my-node-app
+
+
+# 3️⃣ - React (Frontend)
+# -----------------------
+# Use multi-stage build for smaller images
+
+FROM node:20-alpine as builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+ENV NODE_OPTIONS=--openssl-legacy-provider
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=builder /app/build /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+
+# Build: docker build -t my-react-app .
+# Run:   docker run -p 80:80 my-react-app
+
+
+# 4️⃣ - Python (Flask or FastAPI)
+# -------------------------------
+FROM python:3.10-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+EXPOSE 5000
+CMD ["python", "app.py"]
+
+# Build: docker build -t my-python-app .
+# Run:   docker run -p 5000:5000 my-python-app
+
+
+# 5️⃣ - Golang (Simple App)
+# --------------------------
+FROM golang:1.20 AS builder
+WORKDIR /app
+COPY . .
+RUN go build -o app
+
+FROM alpine
+WORKDIR /app
+COPY --from=builder /app/app .
+EXPOSE 8080
+CMD ["./app"]
+
+# Build: docker build -t my-go-app .
+# Run:   docker run -p 8080:8080 my-go-app
+
+#################################################
+# 📁 .dockerignore Tip
+# Prevent copying node_modules, logs, etc:
+# .dockerignore
+node_modules
+*.log
+.git
+build
+dist
+__pycache__
+venv
+target
+
+#################################################
+
+
+
+
+
+
+=================== Deploying ReactJS application in Docker ================
+
+1. Dockerfile for ReactjS
+2. Multi Stage Builds
+3. Docker Caching 
+3. .dockerignore file 
+
+
+
+-------- Dockerfile.dev --------------
+FROM node:alpine
+
+WORKDIR /app
+
+COPY . ./
+
+# npm install
+RUN npm install
+
+RUN npm run build
+
+RUN npm install -g serve
+
+# npm start
+ENTRYPOINT ["serve", "-s", "build"]
+----------------------------------------
+
+----------- Dockerfile.prod (Multitaged build with less buildtime which is by caching )-------------
+# npm run build
+
+FROM node:alpine as build
+
+WORKDIR /app
+
+COPY package*.json ./      #Only copies if there is any changes in the package.json when building the image otherwise it will cached likewise it works for all.
+
+RUN npm install
+
+COPY . ./
+
+RUN npm run build
+
+#  Deploying to nginx
+
+FROM nginx:stable-alpine
+
+COPY --from=build /app/build /usr/share/nginx/html
+
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy .env file and shell script to container
+WORKDIR /usr/share/nginx/html
+COPY ./env.sh .
+COPY .env .
+
+# Add bash
+RUN apk add --no-cache bash
+
+# Make our shell script executable
+RUN chmod +x env.sh
+
+# Start Nginx server
+CMD ["/bin/bash", "-c", "/usr/share/nginx/html/env.sh && nginx -g \"daemon off;\""]
+
+
+
+========== Docker Volumes ======================
+
+When a container is deleted the which is inside the container is also delelte 
+How can we persist the data ?? 
+-- That is trough the docker volumes
+ 
+When we create dockerfile for every instructions a layer is created. All these
+are readonly we can write any data to these layers. And when we execute docker run command a new writable layer is created. 
+
+Problems: 
+Difficult to read the data since its isolated 
+When you delte the container data will be aslo will be deleted 
+
+
+Let say we have 3 containter  running 
+
+1. Container1  			     Container2 			 	  Container3
+	/data/db 			/var/lib/postresql/data			/var/lib/mysql
+	   |						  | 							|  
+	   |						  |								|						
+	   |						  |                             |
+  /var/mongodb			     /var/postres 					/var/mysql 
+	
+						     File System 
+								
+								HOST 
+		
+
+So whatever data is stored in the container the same is restored in the local storage..
+
+
+
+$ docker volume mongo-data
+$ docker volume ls 
+$ docker volume ls -f name=mongo-data 
+
+minikube@e2e-81-105:~$ docker volume ls
+DRIVER    VOLUME NAME
+local     3d95d52270a4a694fa647fe77b7e47436901876d7efeb0910cfe9b42a67f266d
+local     4f001a3eadd665d3fb0bcaa3c0634ad121cf7890dda4b639546d56df9b3fe700
+local     32fa1c02b4bc179aa72152f1d234a9a97c53f95d6b4911239f095cfd815e134e
+local     176c4c7021d35f178d765a5d82db490f6290e0d5d85c880a9094820763afcdf1
+local     9991daf18bbc328167d63edc6f88db756f94e745421e7bc83da3dfb0945bf0ca
+local     c9aabd40aab3942a5982aada9d0b26c1d42cc0663c1a411f3e5c84972f9d92cb
+local     e4ab1b5e4f89da8b93a37ef0615b50c9fccea0a10012b7efb509e1d005f9a26a
+local     f17188b6a17747f98988e1b2c392ab05c8f9c485d6e75d648565927fa7c6435f
+local     minikube
+local     mongo-db
+minikube@e2e-81-105:~$ docker inspect volume mongo-db
+[
+    {
+        "CreatedAt": "2025-06-25T12:09:28+05:30",
+        "Driver": "local",
+        "Labels": null,
+        "Mountpoint": "/var/lib/docker/volumes/mongo-db/_data",
+        "Name": "mongo-db",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+
+
+When we dont provide volume name when creating docker automatically updated with random name 
+minikube@e2e-81-105:~$ docker volume create
+d2f5cdbcdc37302638b6ea6eb1e65a04331836c1cf9ab0f255200bc19ab701b9
+
+This type of volumes are called anonymous volumes
+
+Volume can shared - We can share the same volume with multiple containers, Also we can have multiple mount paths in the single container 
+
+
+$ docker stop mogodb
+$ docker rm mongodb
+$ docker run -e MONGO_INIT_ROOT_USERNAME=root -e MONGO_INITDB_ROOT_PASSWORD=password -p 27017 -d -v mongo-db:/data/db mongo:4.4.6
+
+-- The data which is there in the /data/db should be replicated in the mongo-db volume which is   "Mo untpoint": "/var/lib/docker/volumes/mongo-db/_data", - ths you get when you inspect 
+
+PostreSQL path - /var/lib/postresql/data
+MySQL - /var/lib/mysql
+
+Now even if you stop and stop and remove the container the data associated will be not deleted 
+
+
+Where the data is stored in the container  ? 
+
+$ docker inspect mongo-db
+- You will see a source field with the path 
+ 
+Mounts: { } 
+
+For every volume a new directory is created in the below path 
+
+/var/lib/docker/volumes
+
+Now that we created the mongo-db volume the dir will be 
+
+/var/lib/docker/volumes/mongo-db 
+
+Volume can be managed by docker volume commands 
+
+------ Volume Bind ------------------
+We can aslo use Volume binds to persist data into an dir
+$  docker run -e MONGO_INIT_ROOT_USERNAME=root -e MONGO_INITDB_ROOT_PASSWORD=password -p 27017 -d -v /data/files:/data/db mongo:4.4.6
+
+
+================= Pushing Docker images into Private Rep ==================
+
+Like QA, STAGING, PROD -> WE SHOULD SOMEWHERE SO THAT WE CAN PULL THE IMAGE THE PLACE WE STORE THE IMAGES IS CALLED REGISTRY. 
+
+How to pull the images from ACR 
+
+docker pull docker.io/library/todo-api:1.2.0 -> If we don't give any url it will consider to pull from docker hub 
+
+How to pull from ACR -> copy the URL(ACR DOMAIN) from the ACR Repo 
+
+docker pull 6790102334.dkr.ecr.us-east-1.amazonaws.com/todo-api:1.0.3 
+
+
+================== Docker Compose ============================================
+
+We can automate the process of whatever we have done like first we deployed UI then mongo then created networks and so on.. So this process is tedius job. What if we can all this in just a single command we should convert this into docker compose file 
+
+As default the docker will create the run the containers in the bridge network
+
+-------------------------
+docker-compose.yaml
+-------------------------
+version:3
+
+services:
+ # RUNNING THE MONGO DB
+  mongodb: # This is the service name which will appended by the current dir if we dont add teh container_name key
+    image: mongo 
+	ports: 
+	 - 27017:27027
+	environment: 
+     - MONGO_INIT_ROOT_USERNAME=root
+	 - MONGO_INITDB_ROOT_PASSWORD=passowrd
+	networks:
+	 - mongo-net
+	volumes:
+	 - mongo-data:/data/db
+	 container_name: mongodb # If we dont specify this it will prefix with the dir name todo-ui_mongodb
+	
+  mongo-web:
+  # RUNNING THE MONGO DB EXPRESS CLIENT TO MANAGE THE MONGO
+    image: mongo-express
+	ports: 
+	 - 8081:8081
+	environment: 
+     - ME_CONFIG_MONGODB_ADMINUSERNAME=root
+	 - ME_CONFIG_MONGODB_ADMINPASSWORD=passowrd
+	 - ME_CONFIG_MONGODB_SERVER=mongodb
+	networks:
+	 - mongo-net  # here there is no volume because this is the client which is connected to the DB.
+	container_name: mongo-web # If we dont specify this it will prefix with the dir name todo-ui_mongodb
+	depends_on: 
+	  - mongodb # We can only perform operations only if the database is active so it is dependent on the mongodb container creation first
+  
+  # RUNNING THE THE SPRING BOOT APP   
+  todo-api:
+    image: 6790102334.dkr.ecr.us-east-1.amazonaws.com/todo-api:1.0.3  # pull from ECR, Before ensure to be logged in the AWS ECR FROM AWS CLI 
+	ports: 
+	  - 8080:8080
+	environment: 
+	  - spring.data.mongodb.host=mongodb
+	networks:
+	  - mongo-net
+    container_name: todo-api
+	depends_on: 
+	 - mongodb 
+	
+  # RUNNING THE REACT APP  
+  todo-ui:
+    build:       # What if you want to build with custom file 
+	  context: . # Current dir
+      dockerfile: Dockerfile.prod	  
+    image: todo-ui:1.0.2  
+	ports:
+	  - 3000:80
+	container_name: todo-ui
+	depends_on: 
+     - todo-api
+	 - mongodb
+	 
+# Adding Custom Network which is used above in the services \	 
+networks: 
+  mongo-net:  # Network Name it will create according  the dir -> if your in todo-ui it will bridge network as todo-ui_mongo-net 
+    name: mongo-net # if we specify this will be the network name 
+	
+	
+# Adding Custom Volumes which are used in the above service 
+volumes: 
+  mongo-data:
+	name: mongo-data 
+  
+---------------------------------------------------------
+# TO run the compose yaml
+
+$ docker-compose -f docker-compose.yaml up -d  # TO Run all the services in detached mode
+
+$ docker-compose -f docker-compose.yaml stop mongo-db   # TO stop only the mongo-db service 
+
+$ docker-compose -f docker-compose.yaml down # To stop all the services and remove the containers also 
+
+
+
+==================== DOCKER COMPOSE V/s DOCKER SWARM =====================================
+
+# ----------------------------------------
+# ✅ DOCKER COMPOSE EXAMPLE
+# ----------------------------------------
+
+# Step 1: Create folder structure
+mkdir docker-compose-demo && cd docker-compose-demo
+mkdir api
+touch docker-compose.yml api/index.js nginx.conf
+
+# Step 2: Write docker-compose.yml
+cat <<EOF > docker-compose.yml
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: appdb
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  api:
+    image: node:18
+    working_dir: /app
+    volumes:
+      - ./api:/app
+    command: ["node", "index.js"]
+    environment:
+      DB_HOST: db
+      DB_USER: user
+      DB_PASSWORD: password
+      DB_NAME: appdb
+    depends_on:
+      - db
+    networks:
+      - backend
+
+  web:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - api
+    networks:
+      - backend
+
+volumes:
+  db_data:
+
+networks:
+  backend:
+EOF
+
+# Step 3: Write sample API
+cat <<EOF > api/index.js
+const http = require('http');
+const server = http.createServer((req, res) => {
+  res.end("Hello from Node.js API");
+});
+server.listen(3000);
+EOF
+
+# Step 4: Write Nginx config
+cat <<EOF > nginx.conf
+events {}
+
+http {
+    server {
+        listen 80;
+
+        location / {
+            proxy_pass http://api:3000;
+        }
+    }
+}
+EOF
+
+# Step 5: Start Docker Compose
+docker-compose up -d
+
+# ✅ Output:
+# Creating network "docker-compose-demo_backend" with the default driver
+# Creating volume "docker-compose-demo_db_data" with default driver
+# Creating docker-compose-demo_db_1  ... done
+# Creating docker-compose-demo_api_1 ... done
+# Creating docker-compose-demo_web_1 ... done
+
+# Step 6: Test it in browser or curl
+curl http://localhost:8080
+# Output:
+# Hello from Node.js API
+
+# Step 7: Scale API to run three replicas 
+docker-compose up -d --scale api=3
+
+# Output:
+# docker-compose-demo_api_2 is up-to-date
+# docker-compose-demo_api_3 is up-to-date
+
+# Step 8: Clean up
+docker-compose down -v
+
+# ----------------------------------------
+# 🐳 DOCKER SWARM VERSION
+# =---------------------------------------
+
+# Step 1: Init swarm
+docker swarm init
+
+# Output:
+# Swarm initialized: current node (xxxxxx) is now a manager.
+
+# Step 2: Deploy the stack
+docker stack deploy -c docker-compose.yml mystack
+
+# Output:
+# Creating network mystack_backend
+# Creating service mystack_db
+# Creating service mystack_api
+# Creating service mystack_web
+
+# Step 3: Check services
+docker stack services mystack
+
+# Output:
+# ID             NAME           MODE        REPLICAS  IMAGE
+# xxxxxx         mystack_db     replicated  1/1       postgres:15
+# xxxxxx         mystack_api    replicated  1/1       node:18
+# xxxxxx         mystack_web    replicated  1/1       nginx:alpine
+
+# Step 4: Scale API
+docker service scale mystack_api=3
+
+# Output:
+# mystack_api scaled to 3
+# overall progress: 3 out of 3 tasks
+# verify: service converged
+
+# Step 5: Get logs
+docker service logs mystack_api
+
+# Output (sample):
+# Hello from Node.js API
+# Hello from Node.js API
+
+# Step 6: Remove everything
+docker stack rm mystack
+
+# Output:
+# Removing service mystack_api
+# Removing service mystack_web
+# Removing service mystack_db
+# Removing network mystack_backend
+
+# ========================================
+# ✅ Summary
+# ========================================
+
+# Docker Compose:
+# - Easy for local development
+# - Scale via simple --scale flag
+# - Runs all containers on one host
+
+# Docker Swarm:
+# - Production-ready
+# - Load balancing and multi-host
+# - Services run in replicated mode
