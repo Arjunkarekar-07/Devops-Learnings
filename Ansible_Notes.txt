@@ -6,9 +6,85 @@ Defualt Inventory Directory -> /etc/ansible/hosts
 Custom Inventory-> (Setup: 1 Main server and 3 target server)
 pwd (/home/vunet/vprofile)-> inventory , client.pem (chmod 400)
 
+Ansible is an simple automation tool 
+1. Automation: any system Automation 
+2. Change Management: Production Server changes 
+3. Provisioning: Setup Servers from scratch/ cloud provisioning 
+4. Orchestration: Large scale automcation framework
 
-How to disable host key checking since it asks fingerprint everytime : /etc/ansible/ansible.cfg -> host_key_checking=False
+Ansible is Simple: 
+No Agents : Target Machines/service are accessby SSH,winrm & API
+No Databases: YAML, INI & Texts
+No complex Setup: It's just a python library
+NO Ressidual Software: Push Python package -> Execute > Return Output
+API -> URL/Restful Calls(e:g Cloud), Shell commands, Scripts 
 
+Ansible Connections:
+Linux - ssh, windows - winrm , Cloud -> API, Network Devices  -> Python Libraries 
+> It dosn't use any service just uses python modules and executes the steps in the yaml in the target machines 
+
+=============== Ansible Architecture ================================
+
+                      ANSIBLE ARCHITECTURE OVERVIEW
+                      --------------------------------
+
+                       +------------------------+
+                       |     Control Node       |
+                       |  (Where Ansible runs)  |
+                       +------------------------+
+                                 |
+                                 | SSH (or WinRM for Windows)
+                                 |
+        -------------------------------------------------------------
+        |                      |                      |             |
++----------------+    +----------------+    +----------------+    +----------------+
+| Managed Node 1 |    | Managed Node 2 |    | Managed Node 3 |    | Managed Node N |
+| (Linux/Win/mac)|    | (Linux/Win/mac)|    | (Linux/Win/mac)|    | (Linux/Win/mac)|
++----------------+    +----------------+    +----------------+    +----------------+
+
+Legend:
+- Control Node: Host where Ansible is installed.
+- Managed Nodes: Target servers where Ansible executes tasks.
+- No agent needed on managed nodes.
+- Communication via SSH (or WinRM for Windows).
+
+Ansible Workflow:
+------------------
+1. Write Playbooks → YAML files with desired configurations/tasks.
+2. Inventory File  → List of managed hosts (IP/hostname/group).
+3. Execute Commands or Playbooks from Control Node.
+4. Ansible uses SSH to connect and run modules on target hosts.
+5. Modules return output → Ansible shows results.
+
+Folder Structure Example:
+-------------------------
+project/
+├── inventory.ini           # List of managed hosts
+├── playbook.yml            # Main playbook
+├── roles/                  # Reusable task collections
+│   └── webserver/
+│       ├── tasks/main.yml
+│       ├── handlers/main.yml
+│       ├── templates/
+│       └── files/
+└── group_vars/
+    └── all.yml             # Variables used in playbooks
+
+Commands Example:
+-----------------
+# Check inventory connectivity:
+ansible -i inventory.ini all -m ping
+
+# Run a playbook:
+ansible-playbook -i inventory.ini playbook.yml
+
+# Ad-hoc command to install nginx:
+ansible all -i inventory.ini -m apt -a "name=nginx state=present" -b
+
+
+Note: All the playbooks that we right will be converted into python and it will run in the target servers 
+    
+    
 vi inventory: 
 all:
   hosts:
@@ -33,7 +109,7 @@ all:
     dbservers:  # Group 2
       hosts:
         db01:
-    dc_oregon:  # Group 3
+    dc_oregon:  # Group 3 -> This means both the groups will be affected if we are using this children group
       children:
         webservers:
         dbservers:
@@ -44,10 +120,247 @@ $ ansible all -m ping -i inventory
 $ ansible webservers -m ping -i inventory
 ---> you will get success if all these things goes rights
 
-============= VARIABLES ====================
-variable has the top prority 
 
-	 
+ubuntu@ip-172-31-95-88:~/ansible/writing-inventory-file$ ansible web01 -m ping -i inventory.yaml
+The authenticity of host '172.31.94.128 (172.31.94.128)' can't be established.
+ED25519 key fingerprint is SHA256:vqVmA7pvWv8XMDjo/JhgL+EQ6UyB0HmR24k8WH+yKHE.
+This key is not known by any other names.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+web01 | UNREACHABLE! => {
+    "changed": false,
+    "msg": "Failed to connect to the host via ssh: Warning: Permanently added '172.31.94.128' (ED25519) to the list of known hosts.\r\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\r\n@         WARNING: UNPROTECTED PRIVATE KEY FILE!          @\r\n@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\r\nPermissions 0664 for 'client.pem' are too open.\r\nIt is required that your private key files are NOT accessible by others.\r\nThis private key will be ignored.\r\nLoad key \"client.pem\": bad permissions\r\nubuntu@172.31.94.128: Permission denied (publickey).",
+    "unreachable": true
+}
+
+
+--> This will ask for host key checking for the fingerprint for all the new target servers that you ill add in the inventory. How to resolve ?? 
+How to disable host key checking since it asks fingerprint everytime : /etc/ansible/ansible.cfg -> host_key_checking=False
+=
+
+root@ip-172-31-95-88:/home/ubuntu/ansible/writing-inventory-file# ansible web01 -m ping -i inventory.yaml
+[WARNING]: Platform linux on host web01 is using the discovered Python interpreter at
+/usr/bin/python3.12, but future installation of another Python interpreter could change the meaning of
+that path. See https://docs.ansible.com/ansible-
+core/2.18/reference_appendices/interpreter_discovery.html for more information.
+web01 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.12"
+    },
+    "changed": false,
+    "ping": "pong"
+}
+
+----- Pinging the Groups: --------------- 
+root@ip-172-31-95-88:/home/ubuntu/ansible/writing-inventory-file# ansible webservers -m ping -i inventory.yaml
+[WARNING]: Platform linux on host web01 is using the discovered Python interpreter at
+/usr/bin/python3.12, but future installation of another Python interpreter could change the meaning of
+that path. See https://docs.ansible.com/ansible-
+core/2.18/reference_appendices/interpreter_discovery.html for more information.
+web01 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.12"
+    },
+    "changed": false,
+    "ping": "pong"
+}
+[WARNING]: Platform linux on host web02 is using the discovered Python interpreter at
+/usr/bin/python3.12, but future installation of another Python interpreter could change the meaning of
+that path. See https://docs.ansible.com/ansible-
+core/2.18/reference_appendices/interpreter_discovery.html for more information.
+web02 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.12"
+    },
+    "changed": false,
+    "ping": "pong"
+}
+
+root@ip-172-31-95-88:/home/ubuntu/ansible/writing-inventory-file# ansible dc_oregon -m ping -i inventory.yaml
+[WARNING]: Platform linux on host web01 is using the discovered Python interpreter at
+/usr/bin/python3.12, but future installation of another Python interpreter could change the meaning of
+that path. See https://docs.ansible.com/ansible-
+core/2.18/reference_appendices/interpreter_discovery.html for more information.
+web01 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.12"
+    },
+    "changed": false,
+    "ping": "pong"
+}
+[WARNING]: Platform linux on host web02 is using the discovered Python interpreter at
+/usr/bin/python3.12, but future installation of another Python interpreter could change the meaning of
+that path. See https://docs.ansible.com/ansible-
+core/2.18/reference_appendices/interpreter_discovery.html for more information.
+web02 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.12"
+    },
+    "changed": false,
+    "ping": "pong"
+}
+[WARNING]: Platform linux on host db01 is using the discovered Python interpreter at
+/usr/bin/python3.12, but future installation of another Python interpreter could change the meaning of
+that path. See https://docs.ansible.com/ansible-
+core/2.18/reference_appendices/interpreter_discovery.html for more information.
+db01 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.12"
+    },
+    "changed": false,
+    "ping": "pong"
+}
+
+$ ansible all -m ping -i inventory.yaml --> This will ping all the hosts 
+
+
+============= VARIABLES in Inventory ====================
+variable has the top prority when checking the login credentials. If not provided then it will go and check in the childrens then it will execute.
+
+For Example: 
+all:
+  hosts:
+    web01:
+      ansible_host: 10.0.1.118
+      ansible_user: ec2-user
+      ansible_ssh_private_key_file: client.pem  # (it should be in the current dir)
+    web02:
+      ansible_host: 10.0.1.99
+      ansible_user: ec2-user
+      ansible_ssh_private_key_file: client.pem  # (it should be in the current dir)
+    db01:
+      ansible_host: 10.0.1.240
+
+  children:
+    webservers:  # Group 1
+      hosts:
+        web01:
+        web02:
+    dbservers:  # Group 2
+      hosts:
+        db01:
+    dc_oregon:  # Group 3 -> This means both the groups will be affected if we are using this children group
+      children:
+        webservers:
+        dbservers:
+	  vars: 
+	    ansible_user: ec2-user
+        ansible_ssh_private_key_file: client.pem  # (it should be in the current dir)
+-----------------------------
+
+Json V/S YAML -> How to convert?? 
+
+{Devops: ["AWS", "Terrform", "Ansible"], "Learning": ["Linux","Jenkins,"K8s"], "Development": {"Java": "Spring", "React": "Next.js"}}
+
+The same json in yaml below
+
+Devops:
+ - AWS
+ - Terraform 
+ - Ansible 
+Learning:
+ - Linux
+ - Jenkins
+ - K8s
+Development:
+  Java: Spring 
+  React: Next.js
+
+
+================ AD HOC Commands =================
+ad hoc commands are greate for taksk you repeat rearely. For example if you want to powerr off all the machines in your lab for christmas vacation, You clould execute a quick one liner ansible without writing a playbook. An ad hoc commands looks like this .
+
+$ ansible [pattern] -m [module] -a "[module options]"
+$ ansible atlanta -a "sbin/reboot"
+
+There are lot of modules which can be used to automate the tasks:
+
+#copy files 
+----------------------
+$ ansible atlanta -m ansible.builtin.copy -a "src=/etc/hosts dest=/tmp/hosts" 
+# Change ownership and permissions on files 
+$ ansible atlanta -m ansible.builtin.file -a "dest/srv/foo/a.txt mode=600"
+$ ansible webservers -m ansible.builtin.file -a "dest=/src/foo/b.txt mode=600 onwer=arjun group=arjun"
+
+#Install Services -> If will maintain the state what we mention in the state 
+----------------------
+$ ansible web01 -m ansible.builtin.yum -a "name=http state=present" -i inventory.yaml --become (To run with sudo privilages)
+
+root@ip-172-31-95-88:/home/ubuntu/ansible/writing-inventory-file# ansible web01 -m ansible.builtin.yum -a "name=httpd state=present" -i inventory.yaml --become
+web01 | FAILED! => {
+    "ansible_facts": {
+        "pkg_mgr": "apt"
+    },
+    "changed": false,
+    "msg": [
+        "Could not detect which major revision of dnf is in use, which is required to determine module backend.",
+        "You should manually specify use_backend to tell the module whether to use the dnf4 or dnf5 backend})"
+    ]
+}
+
+The above works when the target hosts are redhat since it is using yum module which is not supported in Ubuntu 
+
+root@ip-172-31-95-88:/home/ubuntu/ansible/writing-inventory-file# ansible web01 -m ansible.builtin.apt -a "name=apache2 state=present update_cache=yes" -i inventory.yaml --become
+[WARNING]: Platform linux on host web01 is using the discovered Python interpreter at
+/usr/bin/python3.12, but future installation of another Python interpreter could change the meaning of
+that path. See https://docs.ansible.com/ansible-
+core/2.18/reference_appendices/interpreter_discovery.html for more information.
+web01 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.12"
+    },
+    "cache_update_time": 1751272400,
+    "cache_updated": true,
+    "changed": true,
+    "stderr": "",
+
+
+root@ip-172-31-95-88:/home/ubuntu/ansible/writing-inventory-file# ansible webservers -m ansible.builtin.apt -a "name=apache2 state=present update_cache=yes" -i inventory.yaml --become
+-> Only web02 will be changed not web01 
+
+root@ip-172-31-95-88:/home/ubuntu/ansible/writing-inventory-file# ansible webservers -m ansible.builtin.apt -a "name=apache2 state=present update_cache=yes" -i inventory.yaml --become
+
+web01 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.12"
+    },
+    "cache_update_time": 1751272622,
+    "cache_updated": true,
+    "changed": false
+}
+
+web02 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.12"
+    },
+    "cache_update_time": 1751272622,
+    "cache_updated": true,
+    "changed": false
+
+
+
+================= Playbooks ======================
+Playbooks are written in yaml format
+
+Example: 
+
+- hosts: websrvgrp           # First play
+  tasks:
+  - name: Install Apache      # 1st Tasks of 1st play
+    yum:
+	  name: apache2
+	  state: present 
+  - name: Deploy Config      # 2nd Task of 2nd play
+    copy: 
+	  src: file/httpd.conf
+	  dest: /etc/httpd.conf
+- hosts: dbsvrgrp			 #	Second Play 
+  tasks:             
+  - name: Install Postresql  # 1st Task of 2nd play 
+    yum: 
+	  name: postgresql
+	  state: latest
+
+	  
 
 ============Ansible Terms========================================
 
