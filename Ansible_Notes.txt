@@ -360,7 +360,15 @@ Example:
 	  name: postgresql
 	  state: latest
 
-=========== VARIABLES ===========
+
+================= VARIABLES =========================================
+There are diff ways in which we can define the variables 
+
+1. Using Variables in the Playbook 
+2. Using Varibales for Inventory 
+3. Using Variables in setup module 
+4. Using variables in Register Module
+
 -------------------
 Using Variable in plabook
 -------------------
@@ -382,7 +390,85 @@ Roles
 ----------
 Include variables from files in playbook 
 
+--------------------------------
+Setup Module - Runtime variable
+--------------------------------
+When we run a ansible playbook first it always runs the first task as gathering facts will run the setup module and generate the fact variables
 
+ansible_os_familiy
+OS name liek Redhat, Debain 
+
+ansible_process_corese
+Number of CPU Cores 
+
+ansible_kernal 
+Kernel Version 
+
+ansible_devices
+conneced Device information 
+
+ansible_default_inpv4
+IP MAC address, gateway etc 
+
+ansible architecture
+64 bit or 32 bit 
+
+These facts variables can be used inside the playbook to check these kind of variables and run a conditional taks
+
+-----------------------------------------------
+Store Ouput: Register Module - Runtime Variable
+-----------------------------------------------
+Module execution(Playbook Tasks) -> Return Output(JSON FORMAT)-> Store Output(Variable to store) ->  Use Variable (In Next Tasks/Print it) 
+
+
+In Plyabook 
+- name: DBServer Setup 
+  hosts: dbservers
+  become: yes 
+  vars: 
+    dbname: arjun 
+    dbuser: current
+    dbpass: tesla
+  tasks
+   - debug
+       msg: "The DBNAME is {{dbname}}" # For priniting the variable. this is like a print statement like any other languages 
+
+   - name: Install mariadb-server 
+     ansible.builtin.apt
+       name: mariadb-server
+       state: present 
+
+   - name: Install pymysql 
+     ansible.builtin.apt
+       name: python3-PyMySql 
+       state: present 
+
+   - name: Strt mariadb service 
+     ansible.builtinserviec 
+       name: mariadb
+       state: started
+       enabled: yes
+
+   - name: Create a new database with 'accounts' 
+     community.mysql.mysql_db:
+        name: "{{dbname}}"   # Usage of variable 
+        state: present
+        login_unix_socket: /var/lib/mysql/mysql.sock
+     
+    - name: Create database user with name 'arjun'
+      community.mysql.mysql_user: 
+        name: "{{dbuser}}"
+        password: "{{dbpass}}"
+        priv: '*.*:ALL'
+	state: present
+	login_unix_socket: /var/lib/mysql/mysql.lock
+      register: dbout # To get the output
+
+     - name: print dbout variable 
+       debug: 
+         var: dboout 
+
+$ ansible-playbook -i inventory.yaml db-creation.yaml -vv
 
 
 
