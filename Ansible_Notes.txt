@@ -360,7 +360,31 @@ Example:
 	  name: postgresql
 	  state: latest
 
-	  
+=========== VARIABLES ===========
+-------------------
+Using Variable in plabook
+-------------------
+- hosts: websrvgrp
+  vars: 
+    http_port: 80 
+    sqluser.admin 
+
+
+------------------------------------
+Inventory Based - In inventory file 
+------------------------------------
+group_vars/all (Cur Dir) 	      --> The variables can be used for all the hosts 
+group_vars/groupname (Cur Dir) --> The variables can be used for the groupname 
+host_vars/hostname (Cur Dir)    --> The variables can be used for the partiular hosts 
+
+----------
+Roles
+----------
+Include variables from files in playbook 
+
+
+
+
 
 ============Ansible Terms========================================
 
