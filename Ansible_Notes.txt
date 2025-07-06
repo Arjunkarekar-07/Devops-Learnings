@@ -705,6 +705,466 @@ db01                       : ok=3    changed=1    unreachable=0    failed=0    s
 web01                      : ok=3    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
 web02                      : ok=3    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
 
+=========== File Operations =====================
+Helpful if you go through the Ansible documentations
+
+- name: Provisioning servers
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install chrony
+      package:
+        name: chrony
+        state: present
+      when: ansible_os_family in ["Debian", "RedHat"]
+
+    - name: Start and enable chrony
+      service:
+        name: "{{ 'chronyd' if ansible_os_family == 'RedHat' else 'chrony' }}"
+        state: started
+        enabled: yes
+
+    - name: Banner file
+      copy:
+        content: "# This Server is Managed by ansible. Please don't perform manuall changes"
+        dest: /etc/motd
+
+
+    - name: Deploy ntp agent conf on Ubuntu/Centos
+      template:
+        src: templates/ntconf
+        dest: /etc/chrony.conf
+        backup: yes
+      when: ansible_os_family in ["Debain", "Redhat"]
+
+
+    - name: retart and enable chrony
+      service:
+        name: "{{ 'chronyd' if ansible_os_family == 'RedHat' else 'chrony' }}"
+        state: restarted                                                           enabled: yes
+
+
+
+================  Ansible Roles =============================
+
+Ansible Roles is simplify the playbook content
+We have currently: 
+
+|-- ansible.cfg
+|-- inventory.yaml
+|-- post_install.yml
+|-- files/
+|   └── datafiles.tar.gz
+|-- templates/
+|   ├── ntp_conf_redhat.j2
+|   └── ntp_conf_ubuntu.j2
+
+
+To make this more managable we can use ansible Rolese
+
+--------------- Example Roles DIR-----------------
+roles/  --> it is useful for organization level 
+└── myrole/
+    ├── defaults/
+    │   └── main.yml          # Default variables for the role (lowest precedence)
+    ├── files/
+    │   └── some_file.conf    # Static files to be copied to the target
+    ├── handlers/
+    │   └── main.yml          # Handlers triggered by `notify`
+    ├── meta/
+    │   └── main.yml          # Role metadata (e.g., dependencies)
+    ├── tasks/
+    │   └── main.yml          # Main list of tasks to run
+    ├── templates/
+    │   └── config.j2         # Jinja2 templates to be rendered
+    ├── vars/
+    │   └── main.yml          # Variables with higher precedence than defaults
+    └── README.md             # (Optional) Documentation for the role
+
+----- Non Role based yaml structure -----------
+
+- name: Provisioning servers
+  hosts: all
+  become: yes 
+  vars: 
+    dir: /opt/dir2 
+
+  tasks:
+    - name: Install chrony
+      package:
+        name: chrony
+        state: present
+      when: ansible_os_family in ["Debian", "RedHat"]
+
+    - name: Start and enable chrony
+      service:
+        name: "{{ 'chronyd' if ansible_os_family == 'RedHat' else 'chrony' }}"
+        state: started
+        enabled: yes
+
+    - name: Banner file
+      copy:
+        content: "# This Server is Managed by ansible. Please don't perform manuall changes"
+        dest: /etc/motd
+
+
+    - name: Deploy ntp agent conf on Ubuntu/Centos
+      template:
+        src: templates/ntconf
+        dest: /etc/chrony.conf
+        backup: yes
+      when: ansible_os_family in ["Debain", "Redhat"]
+
+    - name: Create a Dir
+      file: 
+        path: "{{dir}}"
+        state: directory 
+
+    - name: Dump file 
+      copy: 
+        src: files/myfile.txt
+        dest: /tmp/myfile.txt
+
+    - name: retart and enable chrony
+      service:
+        name: "{{ 'chronyd' if ansible_os_family == 'RedHat' else 'chrony' }}"
+        state: restarted                                                           enabled: yes
+
+So this can be minimized and more correct way is to define using roles and following the dir format for handlers, tasks, files, ect.
+
+#############################################################
+# 📘 ANSIBLE ROLES – COMPLETE NOTES + EXAMPLES
+#############################################################
+
+🧠 WHAT IS A ROLE?
+-------------------
+A role is a set of tasks, variables, handlers, files, and templates
+grouped together for reusability and better organization.
+
+Used to modularize complex playbooks.
+
+-------------------------------------------------------------
+📁 STANDARD DIRECTORY STRUCTURE FOR ROLES
+-------------------------------------------------------------
+
+project/
+├── ansible.cfg
+├── inventory.yaml
+├── site.yml                    # Main playbook
+└── roles/
+    └── ntp/
+        ├── defaults/
+        │   └── main.yml        # Default (lowest priority) vars
+        ├── files/
+        │   └── datafiles.tar.gz  # Static files
+        ├── handlers/
+        │   └── main.yml        # Handlers triggered by notify
+        ├── tasks/
+        │   └── main.yml        # Main task list
+        ├── templates/
+        │   ├── ntp_conf_redhat.j2
+        │   └── ntp_conf_ubuntu.j2
+        ├── vars/
+        │   └── main.yml        # High-priority variables
+        └── meta/
+            └── main.yml        # Role metadata (optional)
+
+-------------------------------------------------------------
+🛠️ CREATING A ROLE USING COMMAND LINE
+-------------------------------------------------------------
+
+# Run this in your Ansible project directory:
+ansible-galaxy init roles/ntp
+
+# It creates the role skeleton under roles/ntp/
+
+-------------------------------------------------------------
+✍️ EXAMPLE: roles/ntp/tasks/main.yml
+-------------------------------------------------------------
+
+---
+- name: Install chrony on Ubuntu
+  apt:
+    name: chrony
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+
+- name: Install chrony on RedHat
+  yum:
+    name: chrony
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Configure NTP (template)
+  template:
+    src: "{{ template_file }}"
+    dest: /etc/chrony.conf
+  notify: Restart chrony
+
+- name: Ensure chrony is running
+  service:
+    name: "{{ chrony_service }}"
+    state: started
+    enabled: yes
+
+-------------------------------------------------------------
+📦 Example: roles/ntp/templates/ntp_conf_ubuntu.j2
+-------------------------------------------------------------
+# NTP config for Ubuntu
+server 0.ubuntu.pool.ntp.org iburst
+server 1.ubuntu.pool.ntp.org iburst
+
+-------------------------------------------------------------
+📦 Example: roles/ntp/templates/ntp_conf_redhat.j2
+-------------------------------------------------------------
+# NTP config for RHEL/CentOS
+server 0.centos.pool.ntp.org iburst
+server 1.centos.pool.ntp.org iburst
+
+-------------------------------------------------------------
+🔧 Example: roles/ntp/handlers/main.yml
+-------------------------------------------------------------
+
+---
+- name: Restart chrony
+  service:
+    name: "{{ chrony_service }}"
+    state: restarted
+
+-------------------------------------------------------------
+📄 Example: roles/ntp/defaults/main.yml
+-------------------------------------------------------------
+
+---
+chrony_service: "{{ 'chronyd' if ansible_os_family == 'RedHat' else 'chrony' }}"
+template_file: "{{ 'ntp_conf_redhat.j2' if ansible_os_family == 'RedHat' else 'ntp_conf_ubuntu.j2' }}"
+
+-------------------------------------------------------------
+📄 Example: site.yml (Main Playbook)
+-------------------------------------------------------------
+
+---
+- name: Configure NTP using a role
+  hosts: all
+  become: yes
+  roles:
+    - ntp
+
+-------------------------------------------------------------
+📄 Example: inventory.yaml
+-------------------------------------------------------------
+
+all:
+  hosts:
+    server1:
+      ansible_host: 192.168.0.101
+    server2:
+      ansible_host: 192.168.0.102
+
+-------------------------------------------------------------
+⚙️ Example: ansible.cfg
+-------------------------------------------------------------
+
+[defaults]
+inventory = inventory.yaml
+roles_path = ./roles
+host_key_checking = False
+
+-------------------------------------------------------------
+🚀 RUNNING THE PLAYBOOK
+-------------------------------------------------------------
+
+ansible-playbook site.yml
+
+-------------------------------------------------------------
+✅ RESULT
+-------------------------------------------------------------
+- Chrony installed based on OS
+- Correct NTP config template used
+- Service enabled and restarted if config changes
+
+#############################################################
+# END OF Rols
+#############################################################
+
+================== AWS Automation Tasks ===========================
+#############################################################
+📘 ANSIBLE NOTES: CREATE AWS EC2 KEY PAIR & SAVE LOCALLY
+#############################################################
+
+🧰 REQUIREMENTS
+---------------
+1. Install `boto3` and `botocore` (Python AWS SDKs):
+   pip install boto3 botocore
+
+2. Install AWS Ansible collection (optional but recommended):
+   ansible-galaxy collection install amazon.aws
+
+3. AWS credentials setup:
+   Either use:
+   - ~/.aws/credentials (default profile)
+   - Set environment variables:
+     export AWS_ACCESS_KEY_ID="your-access-key"
+     export AWS_SECRET_ACCESS_KEY="your-secret-key"
+     export AWS_REGION="your-region"
+
+4. Ensure your `ansible.cfg` allows community modules if needed.
+
+-------------------------------------------------------------
+🔐 STEP 1: CREATE ANSIBLE PLAYBOOK (keypair.yml)
+-------------------------------------------------------------
+
+---
+- name: Create and store an AWS EC2 key pair
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    key_name: my-ansible-key
+    key_path: "./{{ key_name }}.pem"
+  tasks:
+
+    - name: Create EC2 key pair
+      amazon.aws.ec2_key:
+        name: "{{ key_name }}"
+        region: "{{ lookup('env', 'AWS_REGION') }}"
+        state: present
+      register: keypair_result
+
+    - name: Save private key to file
+      copy:
+        content: "{{ keypair_result.key.private_key }}"
+        dest: "{{ key_path }}"
+        mode: '0600'
+      when: keypair_result.changed
+
+    - name: Print success message
+      debug:
+        msg: "Key pair '{{ key_name }}' created and saved to {{ key_path }}"
+
+-------------------------------------------------------------
+📁 OUTPUT
+-------------------------------------------------------------
+If successful, a file named `my-ansible-key.pem` will be created in your current directory.
+This file can be used to SSH into EC2 instances launched with this key.
+
+-------------------------------------------------------------
+📛 ERROR HANDLING
+-------------------------------------------------------------
+- If the key already exists, Ansible will not overwrite it.
+- If AWS credentials are incorrect, boto3 will raise an error.
+
+-------------------------------------------------------------
+✅ COMMAND TO EXECUTE THE PLAYBOOK
+-------------------------------------------------------------
+
+ansible-playbook keypair.yml
+
+-------------------------------------------------------------
+📌 NOTES
+-------------------------------------------------------------
+- Only the first time you create the key, AWS provides the private key.
+- If you lose the `.pem`, you cannot recover it — you'll need to create a new key.
+- Always keep `.pem` files secure and `chmod 600` protected.
+
+#############################################################
+# END OF CREATING KEY PAIR 
+#############################################################
+
+#############################################################
+📘 ANSIBLE PLAYBOOK: CREATE KEY PAIR & LAUNCH EC2 INSTANCE
+#############################################################
+
+---
+- name: Create key pair and launch EC2 with internet access
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    region: "{{ lookup('env', 'AWS_REGION') | default('us-east-1') }}"
+    key_name: "my-ansible-key"
+    key_path: "./{{ key_name }}.pem"
+    ami_id: "ami-0c02fb55956c7d316"         # Ubuntu 22.04 in us-east-1
+    instance_type: "t2.micro"
+    security_group_name: "ansible-sg"
+    instance_name: "AnsibleEC2Instance"
+
+  tasks:
+
+    - name: Create EC2 key pair
+      amazon.aws.ec2_key:
+        name: "{{ key_name }}"
+        region: "{{ region }}"
+        state: present
+      register: keypair_result
+
+    - name: Save private key to .pem file
+      copy:
+        content: "{{ keypair_result.key.private_key }}"
+        dest: "{{ key_path }}"
+        mode: '0600'
+      when: keypair_result.changed
+
+    - name: Create security group for SSH
+      amazon.aws.ec2_group:
+        name: "{{ security_group_name }}"
+        description: "Allow SSH access"
+        region: "{{ region }}"
+        rules:
+          - proto: tcp
+            ports: [22]
+            cidr_ip: 0.0.0.0/0
+        rules_egress:
+          - proto: -1
+            cidr_ip: 0.0.0.0/0
+        state: present
+
+    - name: Launch EC2 instance
+      amazon.aws.ec2_instance:
+        name: "{{ instance_name }}"
+        region: "{{ region }}"
+        key_name: "{{ key_name }}"
+        instance_type: "{{ instance_type }}"
+        image_id: "{{ ami_id }}"
+        wait: yes
+        count: 1
+        network:
+          assign_public_ip: yes
+          security_group: "{{ security_group_name }}"
+        instance_tags:
+          Name: "{{ instance_name }}"
+        state: running
+      register: ec2_result
+
+    - name: Output public IP of instance
+      debug:
+        msg: "EC2 launched! Public IP: {{ ec2_result.instances[0].public_ip_address }}"
+
+#############################################################
+✅ COMMAND TO EXECUTE
+-------------------------------------------------------------
+ansible-playbook ec2_with_keypair.yml
+
+#############################################################
+📦 REQUIREMENTS
+-------------------------------------------------------------
+- Install required Python libraries:
+    pip install boto3 botocore
+- Set AWS credentials:
+    export AWS_ACCESS_KEY_ID=...
+    export AWS_SECRET_ACCESS_KEY=...
+    export AWS_REGION=us-east-1
+- Install AWS Ansible collection:
+    ansible-galaxy collection install amazon.aws
+
+#############################################################
+# END OF NOTES
+#############################################################
+
+
+
 ============Ansible Terms========================================
 
 1.Controller Machine: where the Ansible is intalled and has the provsion to maintain other nodes.
