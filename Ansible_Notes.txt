@@ -382,7 +382,7 @@ Using Variable in plabook
 Inventory Based - In inventory file 
 ------------------------------------
 group_vars/all (Cur Dir) 	      --> The variables can be used for all the hosts 
-group_vars/groupname (Cur Dir) --> The variables can be used for the groupname 
+group_vars/groupname (Cur Dir) --> The variables can be used for the groupnames
 host_vars/hostname (Cur Dir)    --> The variables can be used for the partiular hosts 
 
 ----------
@@ -466,10 +466,106 @@ In Plyabook
 
      - name: print dbout variable 
        debug: 
-         var: dboout 
+         var: dbout
+      -name: print name 
+       debug: 
+         var: dbout.name 
 
 $ ansible-playbook -i inventory.yaml db-creation.yaml -vv
 
+Note: 
+1. Priority will be highest if you have declared variables inside the plyabook, even when you have group/all, etc in the current dir. (If we pass in cmd that has more priority but usually will using vars in the yaml itself)
+Example for cmd: ansible-playbook -e USRNME=newuser -e COMM=clieuser Create_user.yaml  
+2. When we declare variables outide the playbook the priority is as follows 
+     i. group_vars/hostname
+     ii. group_vars/groups
+     iii. group_vars/all 
+
+
+----------- Create_user.yaml (Precedence of var declaration) -------
+
+- name: Understanding vars
+  hosts: all 
+  become: yes 
+    #vars: 
+      #USRM: playuser
+      #COMM: variable form playbook 
+   tasks: 
+     - name: Create User
+       ansible.builtin.user
+         name: "{{USRNM}}"
+         comment: "{{COMM}}"
+       register: usrout 
+      - debug
+          var: userout.name 
+      - debug
+          var: userout.comment
+-------------------------------------------------------------------
+
+$cat group_vars/all --> It will be applied to all 
+USRNM: commonuser
+COMM: variable from groupvars_all file 
+ 
+$cat groups_vars/webservers  --> it will applied to webserver
+USRNM: webgroup 
+COMM: variable from group_vars/webserver file 
+
+$ ls
+ansible.cfg clientKey.pem group_vars/ inventory.yaml db.yaml 
+Similarly for groups_hostaname
+
+$ cat groups_vars/web01 --> It will be applied to web01
+USERNM: web02user
+COMM: variables from host_vars/web02 file 
+
+$ ansible-playbook -e USRNME=cliuser -e COMM=clieuser Create_user.yaml 
+OUTPUT: 
+
+TASK [debug] ************************************************************************
+ok [web01] => {
+   "userout.name": "cliuser"
+}
+ok: [web02] => {
+    "usrout.name": "cliuser"
+}
+ok: [db01] => { 
+    "userout.name": "cliuser"
+} 
+
+TASK [debug] *************************************************************************
+ok [web01] => {
+   "userout.comment": "cliuser"
+}
+ok: [web02] => {
+    "usrout.comment": "cliuser"
+}
+ok: [db01] => { 
+    "userout.comment": "cliuser"
+} 
+
+-------- FACT Variables: SETUP MODULE ----------------------
+
+When we run a ansible playbook first it always runs the first task as gathering facts will run the setup module and generate the fact variables
+
+ansible_os_familiy
+OS name liek Redhat, Debain 
+
+ansible_process_corese
+Number of CPU Cores 
+
+ansible_kernal 
+Kernel Version 
+
+ansible_devices
+conneced Device information 
+
+ansible_default_inpv4
+IP MAC address, gateway etc 
+
+ansible architecture
+64 bit or 32 bit 
+
+These facts variables can be used inside the playbook to check these kind of variables and run a conditional taks
 
 
 ============Ansible Terms========================================
