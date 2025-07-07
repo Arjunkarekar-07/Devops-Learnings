@@ -1948,3 +1948,249 @@ resource "aws_vpc_security_group_egress_rule" "allow_all_outbound" {
 
 
 
+
+
+
+====================== VPC ======================================================
+
+1. VPC is a logical data center within an AWS Region 
+2. VPC is an on demand configurable pool of shared computing resources allocated within a public cloud environment 
+3. Control over network environment, select IP address range, subnets and configure route tables and gateways 
+
+ ========= IPV4 Address =========== 
+ 
+ ############################################################
+#                      IPv4 Address Format                 #
+############################################################
+
+📘 What is IPv4?
+- IPv4 stands for Internet Protocol version 4
+- It is a 32-bit address used to identify devices on a network
+- Written in dotted decimal format
+
+🧱 Structure:
+- An IPv4 address has **4 octets**
+- Each octet is 8 bits (1 byte)
+- Format: <octet1>.<octet2>.<octet3>.<octet4>
+
+✅ Total bits: 8 bits x 4 = **32 bits**
+
+📌 Each octet ranges from 0 to 255
+
+🧪 Example IPv4 Address:
+192.168.1.10
+
+Breakdown:
+- Octet 1: 192
+- Octet 2: 168
+- Octet 3: 1
+- Octet 4: 10
+
+Binary Representation:
+11000000.10101000.00000001.00001010
+
+This is a typical **private IP** used in local networks.
+
+📊 Summary:
+
+| IPv4 Address | Format              | Total Bits | Octets |
+|--------------|---------------------|------------|--------|
+| 192.168.1.10 | 4 decimal numbers    | 32         | 4      |
+
+💡 Note:
+- Each device on a network must have a unique IPv4 address
+- Public vs Private IP ranges define internal vs internet-facing usage
+
+IPV4 Range 
+-> 0.0.0.0 - 255.255.255.2555
+
+Public IP => Internet 
+  eg -> 54.86.23.90
+Private IP => For Local Network Design 
+  eg -> 192.168.1.10 
+  
+Private IP Ranges 
+
+Class A => 10.0.0.0 - 10.255.255.255  (Network Address - 10, hostrange - 0.0.0 - 255.255.255)
+Class B => 172.16.0.0 - 172.31.255.255 (Network Address - 17.16, HostRage - 0.0 - 255.255 )
+Class C => 192.168.0.0 - 192.168.255.255 (Network Address - 192.168.0, Host - 0-255)
+
+Class A: 0–127, Class B: 128–191, Class C: 192–223
+Private IPs:
+- A: 10.x.x.x
+- B: 172.16–172.31.x.x
+- C: 192.168.x.x
+
+
+Subnet Masks 
+1. 255.0.0.0
+2. 255.255.0.0
+3. 255.255.255.0
+
+-> What really is subnet mask, will decide on the network that an ip address range starts from what ip end ip what ip basically to decide the ip range, braodcast addresses
+
+Example in the local laptop: cmd -> ipconfig 
+
+Wireless LAN adapter Wi-Fi:
+
+   Connection-specific DNS Suffix  . :
+   IPv6 Address. . . . . . . . . . . : 2401:4900:61ae:9bd0:4beb:a0c8:3372:4acf
+   Temporary IPv6 Address. . . . . . : 2401:4900:61ae:9bd0:94ce:6e35:2e59:e6bd
+   Link-local IPv6 Address . . . . . : fe80::1dbc:2a33:592a:d4af%8
+   IPv4 Address. . . . . . . . . . . : 172.20.10.2  -> Class B private IP 
+   Subnet Mask . . . . . . . . . . . : 255.255.255.240 --> Subnet Mast that tells that range
+   Default Gateway . . . . . . . . . : fe80::b419:74ff:fe32:5264%8
+                                       172.20.10.1
+									   
+									   
+These are assigned by the router that has been assigned by the DHCP Service for alloting IP Adresses. 
+
+172.20.10.0
+255.255.255.240 --> This is given to the DHCP server. It will allot Ipaddress from this range. How it is range ?? Subnet mask decides that 
+
+Ip - Range
+172.20 -> Is for the Network, Other 2 Octates if for the host.
+
+172.20.10.0 => Reserved for Network Ip
+127.20.10.1 => First Usable IP 
+.
+.
+.
+172.20.10.255 => Last Usable IP
+172.20.255.255 => Reserved for broadcast
+
+So how did we know the ranges that is by the subnet mask. By using the subnet mask itself.
+
+Total Usable IP for
+ Class A => 256 x 256 X 256 => 1,67,77,216
+ Class B => 256 x 256 = 65,536 (It is big netwok usally we can create subnetwork like 172.16.0 , 172.16.1, so on )
+ Class C => 254 
+ 
+ 
+So Based on the needs we can select the subnet mask and the class of IP 
+
+Example we are taking Class B 
+
+172.20.0.0
+255.255.0.0
+
+172.20.1.0 => 255
+172.20.2.0 => 255
+...
+
+============= CIDR (Classless Inter-Domain Routing) ============
+
+255.0.0.0 --> Decimal
+11111111.00000000.00000000.00000000 -> Binary
+CIDR Notation is /8 -- based on how many ones we have 
+
+
+255.255.0.0  --> Decimal
+11111111.11111111.00000000.00000000 --> Binary
+CIDR Notation is /16
+
+255.255.255.0 ==> Decimal
+11111111.11111111.11111111.00000000 --> Binary
+CIDR Notation is /24
+
+Example 
+1. 172.20.0.0/16 -> This means first 2 octates are for network and rest to is for host 
+2. 172.20.0.0/24, 172.20.1.0/24 -> 
+
+Network Range 
+172.20.0.0/16
+
+/16 means:
+The first 16 bits (2 octets) are the network part
+
+Subnets which can create for this network -> total 255
+172.20.0.0/24
+172.20.1.0/24
+172.20.2.0/24
+172.20.3.0/24
+172.20.4.0/24
+172.20.5.0/24
+..
+127.20.255.0/24
+
+| Network         | Subnet Mask   | IP Range                      |
+| --------------- | ------------- | ----------------------------- |
+| 172.20.0.0/24   | 255.255.255.0 | 172.20.0.0 – 172.20.0.255     |
+| 172.20.1.0/24   | 255.255.255.0 | 172.20.1.0 – 172.20.1.255     |
+| ...             | ...           | ...                           |
+| 172.20.255.0/24 | 255.255.255.0 | 172.20.255.0 – 172.20.255.255 |
+
+✅ You can create 256 total /24 subnets from a /16 network.
+Let me know if you want a script to generate all 256 subnets!
+
+✅ Subnet Range Example
+For 172.20.0.0/24:
+Subnet Mask: 255.255.255.0
+CIDR: /24
+Network Address: 172.20.0.0
+Broadcast Address: 172.20.0.255
+Usable IP range: 172.20.0.1 – 172.20.0.254
+
+###########################################################
+#                   IPv4 Address Information              #
+###########################################################
+
+IP Address:             172.20.15.24
+Network Address:        172.20.0.0
+Usable Host IP Range:   172.20.0.1 - 172.20.255.254
+Broadcast Address:      172.20.255.255
+
+Total Number of Hosts:  65,536
+Number of Usable Hosts: 65,534
+
+Subnet Mask:            255.255.0.0
+Wildcard Mask:          0.0.255.255
+Binary Subnet Mask:     11111111.11111111.00000000.00000000
+
+IP Class:               B
+CIDR Notation:          /16
+IP Type:                Private
+
+-----------------------------------------------------------
+
+Short Notation:         172.20.15.24 /16
+Binary ID:              10101100 00010100 00001111 00011000
+                        (Grouped per octet)
+Integer ID:             2886995736
+Hex ID:                 0xac140f18
+
+Reverse DNS (in-addr.arpa): 24.15.20.172.in-addr.arpa
+IPv4 Mapped Address:         ::ffff:ac14:0f18
+6to4 Prefix:                 2002:ac14:0f18::/48
+
+###########################################################
+
+| Term        | Example        | Meaning                                 |
+| ----------- | -------------- | --------------------------------------- |
+| IP Address  | `172.20.15.24` | The device’s actual address             |
+| Subnet Mask | `255.255.0.0`  | Defines the size of the network (`/16`) |
+
+
+====== Exceise Creating a VPC and Subnet in AWS ===================
+
+Region: us-west-1
+VPC Range: 17.20.0.0/16
+4 Subnets: 2 public, 2 Private 
+2 Zones: us-west-1a, us-west-1b
+172.20.1.0/24 => pub-sub-1 (us-west-1a)
+172.20.2.0/24 => pub-sub-2 (us-west-1b)
+172.20.3.0/24 => pri-sub-1 (us-west-1a)
+172.20.4.0/24 => pri-sub-2 (us-west-1b)
+
+Along with this we will Create 
+
+1. Internet Gateway -> To allow internet to public subnets 
+2. One NAT Gateway per zone -> This will sit in public subnet and private subnet will connect to NAT Gateway and NAT will connect to the Internet GW for the Internet access 
+3. One EIP -> Elastic IP for NAT GW
+4. Route Table: 1 Pubsub, 1 PriSub -> This will route the public subnets directly to the internet and for private subnets it will route to the NAT GW.
+5. Bostion Host(Jump Server) -> This will sit in public subnets where we can access the devices which are there in private 
+6. NACL (Network access control list) -> This will be applied to VPC subnets here we have allow and deny in security groups which is for ec2 we have allow.
+7. 1 more VPC => VPC Peering (we will create a default VPC without creating any subnets and we pair the main VPC with this default VPC )
+
+Note: Every region in the AWS will have the default VPC with no name with CIDR range 172.31.0.0/16, if we delete the default VPC we have to contact to the AWS Support team.
+
